@@ -8,21 +8,49 @@ import packview
 import configuration
 
 app = QApplication(sys.argv)
-
-current_page = "Voltage"
+current_page = "Voltage"  # default olarak voltage sayfası açılacak main.py başlatılıdığı zmaanç.
 
 def update_button_styles():
-    voltage_button.setStyleSheet("background-color: #007BFF; color: white;" if current_page == "Voltage" else "background-color: #333333; color: white;")
-    temperature_button.setStyleSheet("background-color: #FF4500; color: white;" if current_page == "Temperature" else "background-color: #333333; color: white;")
-    pack_view_button.setStyleSheet("background-color: #28A745; color: white;" if current_page == "Pack View" else "background-color: #333333; color: white;")
-    config_button.setStyleSheet("background-color: #333333;" if current_page == "Configuration" else "background-color: #333333;")
+    # Common colors
+    accent = "#00b294"
+
+    # Unselected button: transparent background, accent colored border, white text
+    normal = f"""
+    QPushButton {{
+        background-color: transparent;
+        color: #ffffff;
+        border: 2px solid {accent};
+        border-radius: 8px;
+        padding: 0 20px;
+    }}
+    QPushButton:hover {{
+        background-color: rgba(0,178,148,0.08);
+    }}
+    """
+
+    # Selected button: filled with accent color, black text
+    selected = f"""
+    QPushButton {{
+        background-color: {accent};
+        color: #000000;
+        border: 2px solid {accent};
+        border-radius: 8px;
+        padding: 0 20px;
+    }}
+    """
+
+    voltage_button.setStyleSheet(selected if current_page == "Voltage" else normal)
+    temperature_button.setStyleSheet(selected if current_page == "Temperature" else normal)
+    pack_view_button.setStyleSheet(selected if current_page == "Pack View" else normal)
+    # keep config button as icon-only (no text styling change)
+    config_button.setStyleSheet("background-color: transparent; border: none;")
 
 window = QWidget()
 window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-window.setGeometry(100, 100, 1000, 600)
+window.setGeometry(100, 100, 1000, 540)
 
 header = QWidget()
-header.setStyleSheet("background-color: #1a1a2e;")
+header.setStyleSheet("background-color: #000000;")
 header.setFixedHeight(50)
 header_layout = QHBoxLayout()
 header_layout.setContentsMargins(0, 0, 0, 0)
@@ -38,17 +66,24 @@ header_layout.addWidget(logo_label)
 spacer = QWidget()
 spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 header_layout.addWidget(spacer)
-voltage_button = QPushButton("Voltage")
-voltage_button.setFixedSize(100, 40)
-voltage_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Voltage'), stacked_widget.setCurrentIndex(0), update_button_styles()])
 
+voltage_button = QPushButton("Voltage")
+voltage_button.setFixedSize(120, 40)
+voltage_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Voltage'), stacked_widget.setCurrentIndex(0), update_button_styles()])
 header_layout.addWidget(voltage_button)
+
+# Add spacing between buttons
+header_layout.addSpacing(15)
+
 temperature_button = QPushButton("Temperature")
-temperature_button.setFixedSize(100, 40)
+temperature_button.setFixedSize(140, 40)
 temperature_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Temperature'), stacked_widget.setCurrentIndex(1), update_button_styles()])
 header_layout.addWidget(temperature_button)
+
+header_layout.addSpacing(15)
+
 pack_view_button = QPushButton("Pack View")
-pack_view_button.setFixedSize(100, 40)
+pack_view_button.setFixedSize(140, 40)
 pack_view_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Pack View'), stacked_widget.setCurrentIndex(2), update_button_styles()])
 header_layout.addWidget(pack_view_button)
 
@@ -60,7 +95,6 @@ config_button.setFlat(True)
 config_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Configuration'), stacked_widget.setCurrentIndex(3), update_button_styles()])
 header_layout.addWidget(config_button)
 
-
 power_button = QPushButton()
 power_button.setIcon(QIcon("poweroff.png"))
 power_button.setIconSize(QSize(40, 40))
@@ -71,7 +105,6 @@ header_layout.addWidget(power_button)
 header.setLayout(header_layout)
 
 update_button_styles()
-
 main_area = QWidget()
 main_area.setStyleSheet("background-color: #1a1a2e;")
 main_area_layout = QVBoxLayout()
@@ -89,6 +122,8 @@ stacked_widget.addWidget(config_page)
 main_area_layout.addWidget(stacked_widget)
 main_area.setLayout(main_area_layout)
 stacked_widget.setCurrentIndex(0)
+
+
 layout = QVBoxLayout()
 layout.setContentsMargins(0, 0, 0, 0)
 layout.setSpacing(0)
