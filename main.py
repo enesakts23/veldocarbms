@@ -4,6 +4,8 @@ from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, QSize
 import voltage
 import temperature
+import packview
+import configuration
 
 app = QApplication(sys.argv)
 
@@ -20,7 +22,7 @@ window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 window.setGeometry(100, 100, 1000, 600)
 
 header = QWidget()
-header.setStyleSheet("background-color: #222222;")
+header.setStyleSheet("background-color: #1a1a2e;")
 header.setFixedHeight(50)
 header_layout = QHBoxLayout()
 header_layout.setContentsMargins(0, 0, 0, 0)
@@ -36,17 +38,15 @@ header_layout.addWidget(logo_label)
 spacer = QWidget()
 spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 header_layout.addWidget(spacer)
-
 voltage_button = QPushButton("Voltage")
 voltage_button.setFixedSize(100, 40)
 voltage_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Voltage'), stacked_widget.setCurrentIndex(0), update_button_styles()])
-header_layout.addWidget(voltage_button)
 
+header_layout.addWidget(voltage_button)
 temperature_button = QPushButton("Temperature")
 temperature_button.setFixedSize(100, 40)
 temperature_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Temperature'), stacked_widget.setCurrentIndex(1), update_button_styles()])
 header_layout.addWidget(temperature_button)
-
 pack_view_button = QPushButton("Pack View")
 pack_view_button.setFixedSize(100, 40)
 pack_view_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Pack View'), stacked_widget.setCurrentIndex(2), update_button_styles()])
@@ -60,6 +60,7 @@ config_button.setFlat(True)
 config_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Configuration'), stacked_widget.setCurrentIndex(3), update_button_styles()])
 header_layout.addWidget(config_button)
 
+
 power_button = QPushButton()
 power_button.setIcon(QIcon("poweroff.png"))
 power_button.setIconSize(QSize(40, 40))
@@ -71,41 +72,29 @@ header.setLayout(header_layout)
 
 update_button_styles()
 
-# Main area
 main_area = QWidget()
-main_area.setStyleSheet("background-color: black;")
+main_area.setStyleSheet("background-color: #1a1a2e;")
 main_area_layout = QVBoxLayout()
 main_area_layout.setContentsMargins(0, 0, 0, 0)
 
-# Stacked widget for pages
 stacked_widget = QStackedWidget()
-
-# Voltage page
 voltage_page = voltage.create_voltage_page()
 stacked_widget.addWidget(voltage_page)
-
-# Temperature page
 temperature_page = temperature.create_temperature_page()
 stacked_widget.addWidget(temperature_page)
-
-# Placeholder pages
-pack_view_page = QWidget()
-pack_view_page.setStyleSheet("background-color: black;")
+pack_view_page = packview.create_pack_view_page()
 stacked_widget.addWidget(pack_view_page)
-
-config_page = QWidget()
-config_page.setStyleSheet("background-color: black;")
+config_page = configuration.create_configuration_page()
 stacked_widget.addWidget(config_page)
-
 main_area_layout.addWidget(stacked_widget)
 main_area.setLayout(main_area_layout)
-
 stacked_widget.setCurrentIndex(0)
 layout = QVBoxLayout()
 layout.setContentsMargins(0, 0, 0, 0)
 layout.setSpacing(0)
 layout.addWidget(header)
 layout.addWidget(main_area)
+
 window.setLayout(layout)
 window.show()
 sys.exit(app.exec())

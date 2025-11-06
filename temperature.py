@@ -3,7 +3,7 @@ from PyQt6.QtCore import Qt
 
 def create_temperature_page():
     page = QWidget()
-    page.setStyleSheet("background-color: black;")
+    page.setStyleSheet("background-color: #1a1a2e;")  # Koyu mavi-siyah arka plan
 
     layout = QGridLayout()
     layout.setSpacing(10)
