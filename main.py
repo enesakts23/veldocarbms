@@ -6,6 +6,36 @@ import voltage
 import temperature
 import packview
 import configuration
+import can
+import threading
+import json
+import time
+
+def can_listener():
+    try:
+        bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=250000)
+        print("CAN bus connected on can0 with bitrate 250000")
+        with open('receiveddata.jsonl', 'a') as f:
+            while True:
+                msg = bus.recv()
+                if msg:
+                    # Konsola yaz
+                    print(f"Received: ID={msg.arbitration_id:X}, Data={msg.data.hex()}, DLC={msg.dlc}")
+                    # JSONL'ye yaz
+                    data = {
+                        "timestamp": time.time(),
+                        "id": msg.arbitration_id,
+                        "data": msg.data.hex(),
+                        "dlc": msg.dlc
+                    }
+                    f.write(json.dumps(data) + '\n')
+                    f.flush()
+    except Exception as e:
+        print(f"CAN error: {e}")
+
+# CAN thread'ini başlat
+can_thread = threading.Thread(target=can_listener, daemon=True)
+can_thread.start()
 
 app = QApplication(sys.argv)
 current_page = "Voltage"  # default olarak voltage sayfası açılacak main.py başlatılıdığı zmaanç.
