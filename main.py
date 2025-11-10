@@ -10,6 +10,76 @@ import can
 import threading
 import json
 import time
+import struct
+
+import struct
+
+def parse_pack_status(data):
+    soc = data[0]
+    soh = data[1]
+    state_code = data[7]
+    states = {0: "IDLE", 1: "CHARGE", 2: "DISCHARGE"}
+    state = states.get(state_code, f"UNKNOWN({state_code})")
+    return {"SOC": f"{soc}%", "SOH": f"{soh}%", "State": state}
+
+def parse_pack_voltages(data):
+    min_cell = struct.unpack('>H', data[0:2])[0] / 1000
+    max_cell = struct.unpack('>H', data[2:4])[0] / 1000
+    delta = struct.unpack('>H', data[4:6])[0] / 1000
+    total = struct.unpack('>H', data[6:8])[0] / 1000
+    return {"Min_Cell_Voltage": f"{min_cell:.3f} V", "Max_Cell_Voltage": f"{max_cell:.3f} V", "Cell_Voltage_Delta": f"{delta:.3f} V", "Total_Pack_Voltage": f"{total:.3f} V"}
+
+def parse_pack_currents(data):
+    current = struct.unpack('>i', data[0:4])[0] / 100  # /100 for A
+    charging_fet = data[4]
+    discharging_fet = data[5]
+    return {"Current": f"{current:.2f} A", "Charging_FET_Status": charging_fet, "Discharging_FET_Status": discharging_fet}
+
+def parse_overall_temperatures(data):
+    min_temp = struct.unpack('>H', data[0:2])[0] * 0.1
+    max_temp = struct.unpack('>H', data[2:4])[0] * 0.1
+    delta = struct.unpack('>H', data[4:6])[0] * 0.1
+    mean_temp = struct.unpack('>H', data[6:8])[0] * 0.1
+    return {"Min_Temp": f"{min_temp:.1f} °C", "Max_Temp": f"{max_temp:.1f} °C", "Temp_Delta": f"{delta:.1f} °C", "Mean_Temp": f"{mean_temp:.1f} °C"}
+
+def parse_cell_voltages_1(data):
+    voltages = {}
+    for i in range(8):
+        v = data[i] * 10 / 1000
+        voltages[f"Cell_Voltage_{i+1}"] = f"{v:.3f} V"
+    return voltages
+
+def parse_cell_voltages_2(data):
+    voltages = {}
+    for i in range(8):
+        v = data[i] * 10 / 1000
+        voltages[f"Cell_Voltage_{i+9}"] = f"{v:.3f} V"
+    return voltages
+
+def parse_module_temperatures_1(data):
+    temps = {}
+    for i in range(4):
+        t = struct.unpack('>H', data[i*2:(i+1)*2])[0] * 0.1
+        temps[f"Module_Temp_{i+1}"] = f"{t:.1f} °C"
+    return temps
+
+def parse_module_temperatures_2(data):
+    temps = {}
+    for i in range(4):
+        t = struct.unpack('>H', data[i*2:(i+1)*2])[0] * 0.1
+        temps[f"Module_Temp_{i+5}"] = f"{t:.1f} °C"
+    return temps
+
+parsers = {
+    0x02: ("PACK_STATUS", parse_pack_status),
+    0x03: ("PACK_VOLTAGES", parse_pack_voltages),
+    0x04: ("PACK_CURRENTS", parse_pack_currents),
+    0x06: ("OVERALL_TEMPERATURES", parse_overall_temperatures),
+    0x08: ("CELL_VOLTAGES_1", parse_cell_voltages_1),
+    0x09: ("CELL_VOLTAGES_2", parse_cell_voltages_2),
+    0x40: ("MODULE_TEMPERATURES_1", parse_module_temperatures_1),
+    0x41: ("MODULE_TEMPERATURES_2", parse_module_temperatures_2),
+}
 
 def can_listener():
     try:
@@ -21,12 +91,21 @@ def can_listener():
                 if msg:
                     # Konsola yaz
                     print(f"Received: ID={msg.arbitration_id:X}, Data={msg.data.hex()}, DLC={msg.dlc}")
+                    parsed = None
+                    if msg.arbitration_id in parsers:
+                        name, parser = parsers[msg.arbitration_id]
+                        try:
+                            parsed = parser(msg.data)
+                            print(f"Parsed {name}: {parsed}")
+                        except Exception as e:
+                            print(f"Parse error for {name}: {e}")
                     # JSONL'ye yaz
                     data = {
                         "timestamp": time.time(),
                         "id": msg.arbitration_id,
                         "data": msg.data.hex(),
-                        "dlc": msg.dlc
+                        "dlc": msg.dlc,
+                        "parsed": parsed
                     }
                     f.write(json.dumps(data) + '\n')
                     f.flush()

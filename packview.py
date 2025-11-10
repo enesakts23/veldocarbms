@@ -141,8 +141,8 @@ def create_pack_view_page():
 
     # Bilgi satırları - ikon ile birlikte
     info_items = [
-        ("🔋", "SOC:", "0.00%"),
-        ("❤️", "SOH:", "0.00%"),
+        ("🔋", "SOC:", "85.00%"),
+        ("❤️", "SOH:", "100.00%"),
         ("🔌", "State:", "IDLE"),
         ("⚡", "Current:", "0.00 A"),
         ("📉", "Min Cell:", "0.00 V"),
