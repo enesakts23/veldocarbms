@@ -11,74 +11,87 @@ import threading
 import json
 import time
 import struct
+import math
 
-import struct
-
-def parse_pack_status(data):
+def parse_pack_status_704(data):
     soc = data[0]
     soh = data[1]
-    state_code = data[7]
-    states = {0: "IDLE", 1: "CHARGE", 2: "DISCHARGE"}
-    state = states.get(state_code, f"UNKNOWN({state_code})")
-    return {"SOC": f"{soc}%", "SOH": f"{soh}%", "State": state}
+    max_current = struct.unpack('>H', data[2:4])[0] / 100  # /100 for A
+    bat_status = data[4]
+    return {"SOC": f"{soc}%", "SOH": f"{soh}%", "Max_Current": f"{max_current:.2f} A", "Bat_Status": bat_status}
 
-def parse_pack_voltages(data):
-    min_cell = struct.unpack('>H', data[0:2])[0] / 1000
-    max_cell = struct.unpack('>H', data[2:4])[0] / 1000
-    delta = struct.unpack('>H', data[4:6])[0] / 1000
-    total = struct.unpack('>H', data[6:8])[0] / 1000
-    return {"Min_Cell_Voltage": f"{min_cell:.3f} V", "Max_Cell_Voltage": f"{max_cell:.3f} V", "Cell_Voltage_Delta": f"{delta:.3f} V", "Total_Pack_Voltage": f"{total:.3f} V"}
-
-def parse_pack_currents(data):
+def parse_pack_currents_705(data):
     current = struct.unpack('>i', data[0:4])[0] / 100  # /100 for A
-    charging_fet = data[4]
-    discharging_fet = data[5]
-    return {"Current": f"{current:.2f} A", "Charging_FET_Status": charging_fet, "Discharging_FET_Status": discharging_fet}
+    fet_status = struct.unpack('>I', data[4:8])[0]
+    return {"Current": f"{current:.2f} A", "FET_Status": fet_status}
 
-def parse_overall_temperatures(data):
-    min_temp = struct.unpack('>H', data[0:2])[0] * 0.1
-    max_temp = struct.unpack('>H', data[2:4])[0] * 0.1
-    delta = struct.unpack('>H', data[4:6])[0] * 0.1
-    mean_temp = struct.unpack('>H', data[6:8])[0] * 0.1
-    return {"Min_Temp": f"{min_temp:.1f} °C", "Max_Temp": f"{max_temp:.1f} °C", "Temp_Delta": f"{delta:.1f} °C", "Mean_Temp": f"{mean_temp:.1f} °C"}
+def parse_errors_706(data):
+    error_flag_1 = data[0]
+    error_flag_2 = data[1]
+    ov_cell = struct.unpack('>H', data[2:4])[0] / 1000
+    uv_cell = struct.unpack('>H', data[4:6])[0] / 1000
+    ow_cell = struct.unpack('>H', data[6:8])[0] / 1000
+    return {"Error_Flag_1": error_flag_1, "Error_Flag_2": error_flag_2, "OV_Cell": f"{ov_cell:.3f} V", "UV_Cell": f"{uv_cell:.3f} V", "OW_Cell": f"{ow_cell:.3f} V"}
 
-def parse_cell_voltages_1(data):
+def parse_warnings_707(data):
+    delta_cell = struct.unpack('>H', data[0:2])[0] / 1000
+    ot_cell = data[2]
+    ow_temp_cell = struct.unpack('>H', data[3:5])[0] * 0.1
+    return {"Delta_Cell": f"{delta_cell:.3f} V", "OT_Cell": ot_cell, "OW_Temp_Cell": f"{ow_temp_cell:.1f} °C"}
+
+def parse_pack_voltages_708(data):
+    min_cell = data[0] * 0.01 + 2
+    max_cell = data[1] * 0.01 + 2
+    max_cell_delta = data[2] * 0.01
+    vpack = data[3] / 1000
+    return {"Min_Cell": f"{min_cell:.3f} V", "Max_Cell": f"{max_cell:.3f} V", "Max_Cell_Delta": f"{max_cell_delta:.3f} V", "Vpack": f"{vpack:.3f} V"}
+
+def parse_cell_voltages_702(data):
     voltages = {}
     for i in range(8):
-        v = data[i] * 10 / 1000
-        voltages[f"Cell_Voltage_{i+1}"] = f"{v:.3f} V"
+        v = data[i] * 0.01 + 2
+        voltages[f"V{i+1}"] = f"{v:.3f} V"
     return voltages
 
-def parse_cell_voltages_2(data):
+def parse_cell_voltages_703(data):
     voltages = {}
     for i in range(8):
-        v = data[i] * 10 / 1000
-        voltages[f"Cell_Voltage_{i+9}"] = f"{v:.3f} V"
+        v = data[i] * 0.01 + 2
+        voltages[f"V{i+9}"] = f"{v:.3f} V"
     return voltages
 
-def parse_module_temperatures_1(data):
+def parse_temperatures_700(data):
     temps = {}
+    labels = ["T1", "T2", "T3", "T4"]
     for i in range(4):
-        t = struct.unpack('>H', data[i*2:(i+1)*2])[0] * 0.1
-        temps[f"Module_Temp_{i+1}"] = f"{t:.1f} °C"
+        volt = struct.unpack('>H', data[i*2:(i+1)*2])[0]
+        ntc = volt * 10000 / (3 - volt)
+        t_kelvin = 1 / (1 / 298.15 - math.log(10000 / ntc) / 4100)
+        t_celsius = t_kelvin - 273.15
+        temps[labels[i]] = f"{t_celsius:.1f} °C"
     return temps
 
-def parse_module_temperatures_2(data):
+def parse_temperatures_701(data):
     temps = {}
+    labels = ["T5", "T6", "TPCB", "VAREF"]
     for i in range(4):
-        t = struct.unpack('>H', data[i*2:(i+1)*2])[0] * 0.1
-        temps[f"Module_Temp_{i+5}"] = f"{t:.1f} °C"
+        volt = struct.unpack('>H', data[i*2:(i+1)*2])[0]
+        ntc = volt * 10000 / (3 - volt)
+        t_kelvin = 1 / (1 / 298.15 - math.log(10000 / ntc) / 4100)
+        t_celsius = t_kelvin - 273.15
+        temps[labels[i]] = f"{t_celsius:.1f} °C"
     return temps
 
 parsers = {
-    0x02: ("PACK_STATUS", parse_pack_status),
-    0x03: ("PACK_VOLTAGES", parse_pack_voltages),
-    0x04: ("PACK_CURRENTS", parse_pack_currents),
-    0x06: ("OVERALL_TEMPERATURES", parse_overall_temperatures),
-    0x08: ("CELL_VOLTAGES_1", parse_cell_voltages_1),
-    0x09: ("CELL_VOLTAGES_2", parse_cell_voltages_2),
-    0x40: ("MODULE_TEMPERATURES_1", parse_module_temperatures_1),
-    0x41: ("MODULE_TEMPERATURES_2", parse_module_temperatures_2),
+    0x704: ("PACK_STATUS_704", parse_pack_status_704),
+    0x705: ("PACK_CURRENTS_705", parse_pack_currents_705),
+    0x706: ("ERRORS_706", parse_errors_706),
+    0x707: ("WARNINGS_707", parse_warnings_707),
+    0x708: ("PACK_VOLTAGES_708", parse_pack_voltages_708),
+    0x702: ("CELL_VOLTAGES_702", parse_cell_voltages_702),
+    0x703: ("CELL_VOLTAGES_703", parse_cell_voltages_703),
+    0x700: ("TEMPERATURES_700", parse_temperatures_700),
+    0x701: ("TEMPERATURES_701", parse_temperatures_701),
 }
 
 def can_listener():
