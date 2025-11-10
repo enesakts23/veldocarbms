@@ -48,8 +48,8 @@ class BatteryWidget(QWidget):
         soc = max(0, min(100, self.level))
 
         if soc > 30:
-            color1 = QColor("#4caf50")
-            color2 = QColor("#8bc34a")
+            color1 = QColor("#00b51a")
+            color2 = QColor("#00b51a")
         elif soc > 10:
             color1 = QColor("#ff9800")
             color2 = QColor("#ffb300")
@@ -124,7 +124,7 @@ def create_pack_view_page():
     left_container.setStyleSheet('''
         QFrame {
             background-color: transparent;
-            border: 2px solid #00b294;
+            border: 2px solid #00b51a;
             border-radius: 10px;
         }
     ''')
@@ -137,7 +137,7 @@ def create_pack_view_page():
     left_layout.setSpacing(15)
 
     # Accent renk
-    accent_color = "#00b294"
+    accent_color = "#00b51a"
 
     # Bilgi satırları - ikon ile birlikte
     info_items = [
@@ -201,7 +201,7 @@ def create_pack_view_page():
         QFrame {
             background-color: transparent;
             border-radius: 15px;
-            border: 2px solid #00b294;
+            border: 2px solid #00b51a;
             padding: 4px;
         }
     ''')
@@ -233,7 +233,7 @@ def create_pack_view_page():
         font-size: 12px;
     }}
     QPushButton:hover {{
-        background-color: rgba(0,178,148,0.08);
+        background-color: rgba(0,181,26,0.08);
     }}
     """
     
@@ -260,7 +260,7 @@ def create_pack_view_page():
     
     # Charging icon below buttons (only visible when CHR is selected)
     charging_icon = QLabel("⚡")
-    charging_icon.setStyleSheet("color: #00b294; font-size: 24px; background: transparent; border: none;")
+    charging_icon.setStyleSheet("color: #00b51a; font-size: 24px; background: transparent; border: none;")
     charging_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
     charging_icon.setVisible(False)  # Initially hidden
     

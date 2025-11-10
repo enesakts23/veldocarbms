@@ -25,7 +25,7 @@ def create_voltage_page():
         QFrame {
             background: transparent;
             border-radius: 12px;
-            border: 2px solid #00b294;
+            border: 2px solid #00b51a;
             padding: 12px;
         }
     ''')
@@ -86,7 +86,7 @@ def create_voltage_page():
         QFrame {
             background: transparent;
             border-radius: 12px;
-            border: 2px solid #00b294;
+            border: 2px solid #00b51a;
             padding: 12px;
         }
     ''')

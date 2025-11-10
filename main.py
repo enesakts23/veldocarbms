@@ -121,7 +121,7 @@ current_page = "Voltage"  # default olarak voltage sayfası açılacak main.py b
 
 def update_button_styles():
     # Common colors
-    accent = "#00b294"
+    accent = "#00b51a"
 
     # Unselected button: transparent background, accent colored border, white text
     normal = f"""
@@ -133,7 +133,7 @@ def update_button_styles():
         padding: 0 20px;
     }}
     QPushButton:hover {{
-        background-color: rgba(0,178,148,0.08);
+        background-color: rgba(0,181,26,0.08);
     }}
     """
 
@@ -158,6 +158,10 @@ window = QWidget()
 window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 window.setGeometry(100, 100, 1000, 540)
 
+window = QWidget()
+window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+window.setGeometry(100, 100, 1000, 540)
+
 header = QWidget()
 header.setStyleSheet("background-color: #000000;")
 header.setFixedHeight(50)
@@ -165,13 +169,15 @@ header_layout = QHBoxLayout()
 header_layout.setContentsMargins(0, 0, 0, 0)
 header_layout.setSpacing(0)
 
+# Logo
 logo_label = QLabel()
 pixmap = QPixmap("veldologo.png")
-scaled_pixmap = pixmap.scaledToHeight(50)
+scaled_pixmap = pixmap.scaledToHeight(50, Qt.TransformationMode.SmoothTransformation)
 logo_label.setPixmap(scaled_pixmap)
 logo_label.setFixedSize(100, 50)
+logo_label.setStyleSheet("background: transparent;")
 header_layout.addWidget(logo_label)
-
+# Spacer ekle
 spacer = QWidget()
 spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 header_layout.addWidget(spacer)
