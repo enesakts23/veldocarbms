@@ -50,31 +50,45 @@ def create_temperature_page():
     # moderate height multiplier for nicer proportions
     cell_h = int(cell_w * 1.5)
 
+    # Kutup başları eklemek için hücreleri QWidget olarak oluştur
     for i in range(4):
         temp = round(random.uniform(18.0, 45.0), 1)
-        cell_label = QLabel(f"{temp}°C")
-        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # fixed size to create vertical rectangle look
-        cell_label.setFixedSize(cell_w, cell_h)
-        # fixed dark gray cell style to match black background
-        cell_label.setStyleSheet(f"""
-            QLabel {{
+        cell_widget = QWidget(module1_container)
+        cell_widget.setFixedSize(cell_w, cell_h)
+        cell_widget.setStyleSheet(f"""
+            QWidget {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #2b2b2b, stop:1 #1f1f1f);
-                color: #ffffff;
-                font-size: 12px;
-                font-weight: bold;
                 border-radius: 8px;
                 border: 1px solid rgba(255,255,255,0.04);
-                padding: 3px;
             }}
-            QLabel:hover {{
+            QWidget:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #333333, stop:1 #222222);
                 border-color: rgba(255,255,255,0.08);
             }}
         """)
-        module1_cells_layout.addWidget(cell_label)
+        cell_label = QLabel(f"{temp}°C", cell_widget)
+        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cell_label.setGeometry(0, 0, cell_w, cell_h)
+        cell_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        # Pozitif kutup başı (sol üst)
+        pole_w = 12
+        pole_h = 12
+        positive_pole = QLabel(cell_widget)
+        positive_pole.setFixedSize(pole_w, pole_h)
+        positive_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        positive_pole.move(3, - (pole_h // 2))
+        # Negatif kutup başı (sağ üst)
+        negative_pole = QLabel(cell_widget)
+        negative_pole.setFixedSize(pole_w, pole_h)
+        negative_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        negative_pole.move(cell_w - (pole_w + 3), - (pole_h // 2))
+        module1_cells_layout.addWidget(cell_widget)
 
     module1_layout.addLayout(module1_cells_layout)
     module1_container.setLayout(module1_layout)
@@ -105,27 +119,42 @@ def create_temperature_page():
 
     for i in range(4):
         temp = round(random.uniform(18.0, 45.0), 1)
-        cell_label = QLabel(f"{temp}°C")
-        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cell_label.setFixedSize(cell_w2, cell_h2)
-        cell_label.setStyleSheet(f"""
-            QLabel {{
+        cell_widget = QWidget(module2_container)
+        cell_widget.setFixedSize(cell_w2, cell_h2)
+        cell_widget.setStyleSheet(f"""
+            QWidget {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #2b2b2b, stop:1 #1f1f1f);
-                color: #ffffff;
-                font-size: 12px;
-                font-weight: bold;
                 border-radius: 8px;
                 border: 1px solid rgba(255,255,255,0.04);
-                padding: 3px;
             }}
-            QLabel:hover {{
+            QWidget:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #333333, stop:1 #222222);
                 border-color: rgba(255,255,255,0.08);
             }}
         """)
-        module2_cells_layout.addWidget(cell_label)
+        cell_label = QLabel(f"{temp}°C", cell_widget)
+        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cell_label.setGeometry(0, 0, cell_w2, cell_h2)
+        cell_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        # Pozitif kutup başı (sol üst)
+        pole_w = 12
+        pole_h = 12
+        positive_pole = QLabel(cell_widget)
+        positive_pole.setFixedSize(pole_w, pole_h)
+        positive_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        positive_pole.move(3, - (pole_h // 2))
+        # Negatif kutup başı (sağ üst)
+        negative_pole = QLabel(cell_widget)
+        negative_pole.setFixedSize(pole_w, pole_h)
+        negative_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        negative_pole.move(cell_w2 - (pole_w + 3), - (pole_h // 2))
+        module2_cells_layout.addWidget(cell_widget)
 
     module2_layout.addLayout(module2_cells_layout)
     module2_container.setLayout(module2_layout)

@@ -29,15 +29,8 @@ def create_voltage_page():
             padding: 12px;
         }
     ''')
-    module1_layout = QVBoxLayout()
-    module1_layout.setSpacing(10)
-    module1_layout.setContentsMargins(10, 10, 10, 10)
+    # module1_container: don't set a layout so we can position children absolutely
     
-    # Module-1 Cells (8 cells: side-by-side horizontal)
-    module1_cells_layout = QHBoxLayout()
-    module1_cells_layout.setSpacing(8)
-    module1_cells_layout.setContentsMargins(0, 0, 0, 0)
-
     # compute per-cell size based on container available width
     container_padding = 30  # left+right padding inside module
     cell_spacing = 8
@@ -47,32 +40,44 @@ def create_voltage_page():
 
     for i in range(8):
         voltage = round(random.uniform(3.2, 3.6), 2)
-        cell_label = QLabel(f"{voltage}V")
-        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # fixed size to create vertical rectangle look
-        cell_label.setFixedSize(cell_w, cell_h)
-        # fixed dark gray cell style to match black background
-        cell_label.setStyleSheet(f"""
-            QLabel {{
+        x_pos = 10 + i * (cell_w + cell_spacing)
+        y_pos = 20
+        cell_widget = QWidget(module1_container)
+        cell_widget.setFixedSize(cell_w, cell_h)
+        cell_widget.move(x_pos, y_pos)
+        cell_widget.setStyleSheet(f"""
+            QWidget {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #2b2b2b, stop:1 #1f1f1f);
-                color: #ffffff;
-                font-size: 12px;
-                font-weight: bold;
                 border-radius: 8px;
                 border: 1px solid rgba(255,255,255,0.04);
-                padding: 3px;
             }}
-            QLabel:hover {{
+            QWidget:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #333333, stop:1 #222222);
                 border-color: rgba(255,255,255,0.08);
             }}
         """)
-        module1_cells_layout.addWidget(cell_label)
-
-    module1_layout.addLayout(module1_cells_layout)
-    module1_container.setLayout(module1_layout)
+        voltage_label = QLabel(f"{voltage}V", cell_widget)
+        voltage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        voltage_label.setGeometry(0, 0, cell_w, cell_h)
+        voltage_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        # Pozitif kutup başı (sol üst)
+        pole_w = 12
+        pole_h = 12
+        positive_pole = QLabel(cell_widget)
+        positive_pole.setFixedSize(pole_w, pole_h)
+        positive_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        positive_pole.move(3, - (pole_h // 2))
+        # Negatif kutup başı (sağ üst)
+        negative_pole = QLabel(cell_widget)
+        negative_pole.setFixedSize(pole_w, pole_h)
+        negative_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        negative_pole.move(cell_w - (pole_w + 3), - (pole_h // 2))
     layout.addWidget(module1_container)
     
     # Module-2 Container
@@ -85,45 +90,52 @@ def create_voltage_page():
             padding: 12px;
         }
     ''')
-    module2_layout = QVBoxLayout()
-    module2_layout.setSpacing(10)
-    module2_layout.setContentsMargins(10, 10, 10, 10)
+    # module2_container: don't set a layout so we can position children absolutely
     
-    # Module-2 Cells (8 cells: side-by-side horizontal)
-    module2_cells_layout = QHBoxLayout()
-    module2_cells_layout.setSpacing(8)
-    module2_cells_layout.setContentsMargins(0, 0, 0, 0)
-
     # use same per-cell size as module1
     cell_w2 = cell_w
     cell_h2 = cell_h
 
     for i in range(8):
         voltage = round(random.uniform(3.2, 3.6), 2)
-        cell_label = QLabel(f"{voltage}V")
-        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cell_label.setFixedSize(cell_w2, cell_h2)
-        cell_label.setStyleSheet(f"""
-            QLabel {{
+        x_pos = 10 + i * (cell_w2 + cell_spacing)
+        y_pos = 20
+        cell_widget = QWidget(module2_container)
+        cell_widget.setFixedSize(cell_w2, cell_h2)
+        cell_widget.move(x_pos, y_pos)
+        cell_widget.setStyleSheet(f"""
+            QWidget {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #2b2b2b, stop:1 #1f1f1f);
-                color: #ffffff;
-                font-size: 12px;
-                font-weight: bold;
                 border-radius: 8px;
                 border: 1px solid rgba(255,255,255,0.04);
-                padding: 3px;
             }}
-            QLabel:hover {{
+            QWidget:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #333333, stop:1 #222222);
                 border-color: rgba(255,255,255,0.08);
             }}
         """)
-        module2_cells_layout.addWidget(cell_label)
-
-    module2_layout.addLayout(module2_cells_layout)
-    module2_container.setLayout(module2_layout)
+        voltage_label = QLabel(f"{voltage}V", cell_widget)
+        voltage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        voltage_label.setGeometry(0, 0, cell_w2, cell_h2)
+        voltage_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        # Pozitif kutup başı (sol üst)
+        pole_w = 12
+        pole_h = 12
+        positive_pole = QLabel(cell_widget)
+        positive_pole.setFixedSize(pole_w, pole_h)
+        positive_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        positive_pole.move(3, - (pole_h // 2))
+        # Negatif kutup başı (sağ üst)
+        negative_pole = QLabel(cell_widget)
+        negative_pole.setFixedSize(pole_w, pole_h)
+        negative_pole.setStyleSheet(
+            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+        )
+        negative_pole.move(cell_w2 - (pole_w + 3), - (pole_h // 2))
     layout.addWidget(module2_container)
     
     return page
