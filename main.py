@@ -28,10 +28,46 @@ def parse_pack_currents_705(data):
 def parse_errors_706(data):
     error_flag_1 = data[0]
     error_flag_2 = data[1]
-    ov_cell = struct.unpack('>H', data[2:4])[0] / 1000
-    uv_cell = struct.unpack('>H', data[4:6])[0] / 1000
-    ow_cell = struct.unpack('>H', data[6:8])[0] / 1000
-    return {"Error_Flag_1": error_flag_1, "Error_Flag_2": error_flag_2, "OV_Cell": f"{ov_cell:.3f} V", "UV_Cell": f"{uv_cell:.3f} V", "OW_Cell": f"{ow_cell:.3f} V"}
+    combined_error_flags = (error_flag_2 << 8) | error_flag_1
+    
+    # Bit definitions for errors
+    error_bits = {
+        0: "Over Voltage Cell",
+        1: "Under Voltage Cell",
+        2: "High temperature Cell",
+        3: "Pack Pressure Fault",
+        4: "Ic fail",
+        5: "Open Wire",
+        6: "Can Error",
+        7: "Packet Loss",
+        8: "Package Voltage Fault",
+        9: "S channel delta fault",
+        10: "Temp Open wire",
+        11: "ADC fault",
+        12: "Balance Fault",
+        13: "Empty",
+        14: "Empty",
+        15: "Empty"
+    }
+    
+    active_errors = []
+    for bit in range(16):
+        if combined_error_flags & (1 << bit):
+            active_errors.append(error_bits.get(bit, f"Unknown Bit {bit}"))
+    
+    # OV Cell: data[2:4] - 16 bits, each bit represents a cell with OV error
+    ov_flags = struct.unpack('>H', data[2:4])[0]
+    active_ov_cells = [bit + 1 for bit in range(16) if ov_flags & (1 << bit)]
+    
+    # UV Cell: data[4:6] - 16 bits, each bit represents a cell with UV error
+    uv_flags = struct.unpack('>H', data[4:6])[0]
+    active_uv_cells = [bit + 1 for bit in range(16) if uv_flags & (1 << bit)]
+    
+    # OW Cell: data[6:8] - 16 bits, each bit represents a cell with OW error
+    ow_flags = struct.unpack('>H', data[6:8])[0]
+    active_ow_cells = [bit + 1 for bit in range(16) if ow_flags & (1 << bit)]
+    
+    return {"Combined_Error_Flags": combined_error_flags, "Active_Errors": active_errors, "Active_OV_Cells": active_ov_cells, "Active_UV_Cells": active_uv_cells, "Active_OW_Cells": active_ow_cells}
 
 def parse_warnings_707(data):
     delta_cell = struct.unpack('>H', data[0:2])[0] / 1000

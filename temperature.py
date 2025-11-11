@@ -50,11 +50,6 @@ def create_temperature_page():
                 border-radius: 8px;
                 border: 1px solid rgba(255,255,255,0.04);
             }}
-            QWidget:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #333333, stop:1 #222222);
-                border-color: rgba(255,255,255,0.08);
-            }}
         """)
         cell_label = QLabel(f"{temp}°C", cell_widget)
         cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -109,11 +104,6 @@ def create_temperature_page():
                     stop:0 #2b2b2b, stop:1 #1f1f1f);
                 border-radius: 8px;
                 border: 1px solid rgba(255,255,255,0.04);
-            }}
-            QWidget:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #333333, stop:1 #222222);
-                border-color: rgba(255,255,255,0.08);
             }}
         """)
         cell_label = QLabel(f"{temp}°C", cell_widget)
