@@ -61,7 +61,7 @@ def create_voltage_page():
         voltage_label = QLabel(f"{voltage}V", cell_widget)
         voltage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         voltage_label.setGeometry(0, 0, cell_w, cell_h)
-        voltage_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        voltage_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         # Pozitif kutup başı (sol üst)
         pole_w = 12
         pole_h = 12
@@ -119,7 +119,7 @@ def create_voltage_page():
         voltage_label = QLabel(f"{voltage}V", cell_widget)
         voltage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         voltage_label.setGeometry(0, 0, cell_w2, cell_h2)
-        voltage_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        voltage_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         # Pozitif kutup başı (sol üst)
         pole_w = 12
         pole_h = 12

@@ -28,19 +28,19 @@ class BatteryWidget(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
 
-        body_left = w * 0.2
-        body_top = h * 0.08
-        body_width = w * 0.6
-        body_height = h * 0.8
+        body_left = int(w * 0.2)
+        body_top = int(h * 0.08)
+        body_width = int(w * 0.6)
+        body_height = int(h * 0.8)
 
         painter.setPen(QPen(QColor("#3a3a4e"), 4))
         painter.setBrush(QBrush(QColor("#2a2a3e")))
         painter.drawRoundedRect(body_left, body_top, body_width, body_height, 15, 15)
 
-        terminal_width = w * 0.24
-        terminal_height = h * 0.06
-        terminal_left = w * 0.38
-        terminal_top = h * 0.02
+        terminal_width = int(w * 0.24)
+        terminal_height = int(h * 0.06)
+        terminal_left = int(w * 0.38)
+        terminal_top = int(h * 0.02)
         painter.setBrush(QBrush(QColor("#3a3a4e")))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(terminal_left, terminal_top, terminal_width, terminal_height, 5, 5)
@@ -143,6 +143,7 @@ def create_pack_view_page():
     info_items = [
         ("🔋", "SOC:", "85.00%"),
         ("❤️", "SOH:", "100.00%"),
+        ("⚡", "Vpack:", "300.00 V"),
         ("🔌", "State:", "IDLE"),
         ("⚡", "Current:", "0.00 A"),
         ("📉", "Min Cell:", "0.00 V"),

@@ -59,7 +59,7 @@ def create_temperature_page():
         cell_label = QLabel(f"{temp}°C", cell_widget)
         cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cell_label.setGeometry(0, 0, cell_w, cell_h)
-        cell_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         pole_w = 12
         pole_h = 12
         positive_pole = QLabel(cell_widget)
@@ -119,7 +119,7 @@ def create_temperature_page():
         cell_label = QLabel(f"{temp}°C", cell_widget)
         cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cell_label.setGeometry(0, 0, cell_w2, cell_h2)
-        cell_label.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         if i != 2:  # Sadece 3. hücre için kutup başları olmayacak
             # Pozitif kutup başı (sol üst)
             pole_w = 12
