@@ -202,14 +202,16 @@ def create_pack_view_page():
             background-color: transparent;
             border-radius: 15px;
             border: 2px solid #00b51a;
-            padding: 4px;
+            padding: 1px;
         }
     ''')
-    button_frame.setFixedHeight(35)
+    button_frame.setFixedHeight(32)
+    button_frame.setFixedWidth(140)  # Butonları çevrelemek için sabit genişlik (biraz daha sıkı)
     
     button_layout = QHBoxLayout()
-    button_layout.setContentsMargins(4, 2, 4, 2)
-    button_layout.setSpacing(4)
+    # biraz soldan daraltmak için sol margin'i azalt
+    button_layout.setContentsMargins(2, 1, 4, 1)
+    button_layout.setSpacing(3)
     
     # Create buttons
     dsc_button = QPushButton("DSC")
@@ -219,16 +221,17 @@ def create_pack_view_page():
     # Make buttons checkable and oval
     for btn in (dsc_button, idl_button, chr_button):
         btn.setCheckable(True)
-        btn.setFixedSize(50, 25)
+        btn.setFixedSize(45, 22)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
     
     # Button styles
+    # Use a pill-shaped radius equal to half the button height (button height = 22 -> radius = 11)
     normal_style = f"""
     QPushButton {{
         background-color: transparent;
         color: #ffffff;
-        border: none;
-        border-radius: 12px;
+        border: 2px solid transparent;
+        border-radius: 11px; /* pill */
         font-weight: bold;
         font-size: 12px;
     }}
@@ -242,7 +245,7 @@ def create_pack_view_page():
         background-color: {accent_color};
         color: #000000;
         border: 2px solid {accent_color};
-        border-radius: 12px;
+        border-radius: 11px; /* pill */
         font-weight: bold;
         font-size: 12px;
     }}
@@ -275,9 +278,11 @@ def create_pack_view_page():
     update_button_styles()
     button_group.buttonClicked.connect(lambda: update_button_styles())
     
+    button_layout.addStretch()
     button_layout.addWidget(dsc_button)
     button_layout.addWidget(idl_button)
     button_layout.addWidget(chr_button)
+    button_layout.addStretch()
     button_frame.setLayout(button_layout)
     
     right_layout.addSpacing(3)
