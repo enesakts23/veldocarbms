@@ -13,8 +13,6 @@ import time
 from datetime import datetime
 import struct
 import math
-import subprocess
-import platform
 
 # Global data storage
 voltage_data = {}
@@ -100,7 +98,7 @@ def parse_pack_voltages_708(data):
     min_cell = data[0] * 0.01 + 2
     max_cell = data[1] * 0.01 + 2
     max_cell_delta = data[2] * 0.01
-    vpack = data[3] / 1000
+    vpack = struct.unpack('<H', data[3:5])[0] / 10
     parsed = {"Min_Cell": f"{min_cell:.3f} V", "Max_Cell": f"{max_cell:.3f} V", "Max_Cell_Delta": f"{max_cell_delta:.3f} V", "Vpack": f"{vpack:.3f} V"}
     pack_data.update(parsed)
     return parsed
@@ -165,21 +163,8 @@ parsers = {
 
 def can_listener():
     try:
-        if platform.system() == 'Linux':
-            # Bring down the CAN interface first
-            subprocess.run(["sudo", "ip", "link", "set", "can0", "down"])
-            subprocess.run(["sudo", "ip", "link", "set", "can0", "up", "type", "can", "bitrate", "500000"])
-            bustype = 'socketcan'
-            channel = 'can0'
-        elif platform.system() == 'Windows':
-            # For Windows, use PCAN or Vector interface (adjust based on your hardware)
-            bustype = 'pcan'  # or 'vector' depending on your CAN analyzer
-            channel = 'PCAN_USBBUS1'  # or appropriate channel for your device
-        else:
-            raise Exception("Unsupported platform")
-        
-        bus = can.interface.Bus(channel=channel, bustype=bustype, bitrate=500000)
-        print(f"CAN bus connected on {channel} with bustype {bustype} and bitrate 500000")
+        bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=500000)
+        print("CAN bus connected on can0 with bitrate 500000")
         with open('receiveddata.jsonl', 'a') as f:
             while True:
                 msg = bus.recv()
@@ -190,22 +175,6 @@ def can_listener():
                         name, parser = parsers[msg.arbitration_id]
                         try:
                             parsed = parser(msg.data)
-                            # Print only for specific IDs: 0x706, 0x707
-                            if msg.arbitration_id in [0x706, 0x707]:
-                                print(f"Received: ID={msg.arbitration_id:X}, Data={msg.data.hex()}")
-                                if msg.arbitration_id == 0x706:
-                                    parsed_copy = parsed.copy()
-                                    parsed_copy['Combined_Error_Flags_Binary'] = bin(parsed['Combined_Error_Flags'])[2:].zfill(16)
-                                    print(f"Parsed {name}: {parsed_copy}")
-                                elif msg.arbitration_id == 0x707:
-                                    parsed_copy = parsed.copy()
-                                    ot_cell = parsed['OT_Cell']
-                                    parsed_copy['OT_Cell_Binary'] = bin(ot_cell)[2:].zfill(16)
-                                    active_ot_cells = [bit + 1 for bit in range(16) if ot_cell & (1 << bit)]
-                                    parsed_copy['Active_OT_Cells'] = active_ot_cells
-                                    print(f"Parsed {name}: {parsed_copy}")
-                                else:
-                                    print(f"Parsed {name}: {parsed}")
                         except Exception as e:
                             print(f"Parse error for {name}: {e}")
                     # JSONL'ye yaz
@@ -351,8 +320,9 @@ layout.addWidget(main_area)
 window.setLayout(layout)
 window.show()
 
+# Timer to update displays
 timer = QTimer()
 timer.timeout.connect(lambda: (voltage.update_voltage_display(), temperature.update_temperature_display(), packview.update_pack_display()))
-timer.start(1000)  
+timer.start(1000)  # Update every 1 second
 
 sys.exit(app.exec())

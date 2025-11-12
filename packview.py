@@ -307,7 +307,7 @@ def create_pack_view_page():
 
 def update_pack_display():
     import __main__ as main_mod
-    keys = ["SOC", "SOH", "Vpack", "Bat_Status", "Current", "Min_Cell", "Max_Cell"]
+    keys = ["SOC", "SOH", "Vpack", "Bat_Status", "Max_Current", "Min_Cell", "Max_Cell"]
     for i, key in enumerate(keys):
         if key in main_mod.pack_data:
             if key == "Bat_Status":
@@ -322,6 +322,14 @@ def update_pack_display():
                 else:
                     state = f"UNKNOWN({status})"
                 pack_labels[i].setText(state)
+            elif key == "Vpack":
+                # Vpack için iki basamak göster
+                vpack_str = main_mod.pack_data["Vpack"]
+                try:
+                    vpack_val = float(vpack_str.split()[0])
+                    pack_labels[i].setText(f"{vpack_val:.2f} V")
+                except ValueError:
+                    pack_labels[i].setText(vpack_str)
             else:
                 pack_labels[i].setText(main_mod.pack_data[key])
         else:
