@@ -13,6 +13,8 @@ import time
 from datetime import datetime
 import struct
 import math
+import platform
+import subprocess
 
 # Global data storage
 voltage_data = {}
@@ -163,8 +165,15 @@ parsers = {
 
 def can_listener():
     try:
-        bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=500000)
-        print("CAN bus connected on can0 with bitrate 500000")
+        if platform.system() == 'Linux':
+            bus = can.interface.Bus(channel='can0', interface='socketcan', bitrate=500000)
+            print("CAN bus connected on can0 with bitrate 500000 (Linux socketcan)")
+        elif platform.system() == 'Windows':
+            bus = can.interface.Bus(channel=(0, 1), interface='canalystii', bitrate=500000)
+            print("CAN bus connected on CANalyst-II channels 0 and 1 with bitrate 500000 (Windows)")
+        else:
+            print("Unsupported platform for CAN bus")
+            return
         with open('receiveddata.jsonl', 'a') as f:
             while True:
                 msg = bus.recv()
@@ -189,6 +198,14 @@ def can_listener():
         print(f"CAN error: {e}")
 
 # CAN thread'ini başlat
+if platform.system() == 'Linux':
+    try:
+        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'down'], check=True)
+        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'up', 'type', 'can', 'bitrate', '500000'], check=True)
+        print("Executed: sudo ip link set can0 down and up")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to execute CAN interface commands: {e}")
+
 can_thread = threading.Thread(target=can_listener, daemon=True)
 can_thread.start()
 

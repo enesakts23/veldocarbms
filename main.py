@@ -172,13 +172,12 @@ def can_listener():
             bustype = 'socketcan'
             channel = 'can0'
         elif platform.system() == 'Windows':
-            # For Windows, use PCAN or Vector interface (adjust based on your hardware)
-            bustype = 'pcan'  # or 'vector' depending on your CAN analyzer
-            channel = 'PCAN_USBBUS1'  # or appropriate channel for your device
+            bustype = 'canalystii'
+            channel = (0, 1)
         else:
             raise Exception("Unsupported platform")
         
-        bus = can.interface.Bus(channel=channel, bustype=bustype, bitrate=500000)
+        bus = can.interface.Bus(channel=channel, interface=bustype, bitrate=500000)
         print(f"CAN bus connected on {channel} with bustype {bustype} and bitrate 500000")
         with open('receiveddata.jsonl', 'a') as f:
             while True:
