@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy, QLabel, QStackedWidget
 from PyQt6.QtGui import QIcon, QPixmap
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QTimer
 import voltage
 import temperature
 import packview
@@ -10,22 +10,35 @@ import can
 import threading
 import json
 import time
+from datetime import datetime
 import struct
 import math
 
+# Global data storage
+voltage_data = {}
+temperature_data = {}
+pack_data = {}
+
 def parse_pack_status_704(data):
+    global pack_data
     soc = data[0]
     soh = data[1]
     max_current = struct.unpack('>H', data[2:4])[0] / 100  # /100 for A
     bat_status = data[4]
-    return {"SOC": f"{soc}%", "SOH": f"{soh}%", "Max_Current": f"{max_current:.2f} A", "Bat_Status": bat_status}
+    parsed = {"SOC": f"{soc}%", "SOH": f"{soh}%", "Max_Current": f"{max_current:.2f} A", "Bat_Status": bat_status}
+    pack_data.update(parsed)
+    return parsed
 
 def parse_pack_currents_705(data):
+    global pack_data
     current = struct.unpack('>i', data[0:4])[0] / 100  # /100 for A
     fet_status = struct.unpack('>I', data[4:8])[0]
-    return {"Current": f"{current:.2f} A", "FET_Status": fet_status}
+    parsed = {"Current": f"{current:.2f} A", "FET_Status": fet_status}
+    pack_data.update(parsed)
+    return parsed
 
 def parse_errors_706(data):
+    global pack_data
     error_flag_1 = data[0]
     error_flag_2 = data[1]
     combined_error_flags = (error_flag_2 << 8) | error_flag_1
@@ -67,55 +80,73 @@ def parse_errors_706(data):
     ow_flags = struct.unpack('>H', data[6:8])[0]
     active_ow_cells = [bit + 1 for bit in range(16) if ow_flags & (1 << bit)]
     
-    return {"Combined_Error_Flags": combined_error_flags, "Active_Errors": active_errors, "Active_OV_Cells": active_ov_cells, "Active_UV_Cells": active_uv_cells, "Active_OW_Cells": active_ow_cells}
+    parsed = {"Combined_Error_Flags": combined_error_flags, "Active_Errors": active_errors, "Active_OV_Cells": active_ov_cells, "Active_UV_Cells": active_uv_cells, "Active_OW_Cells": active_ow_cells}
+    pack_data.update(parsed)
+    return parsed
 
 def parse_warnings_707(data):
+    global pack_data
     delta_cell = struct.unpack('>H', data[0:2])[0] / 1000
-    ot_cell = data[2]
-    ow_temp_cell = struct.unpack('>H', data[3:5])[0] * 0.1
-    return {"Delta_Cell": f"{delta_cell:.3f} V", "OT_Cell": ot_cell, "OW_Temp_Cell": f"{ow_temp_cell:.1f} °C"}
+    ot_cell = struct.unpack('>H', data[2:4])[0]  # 16-bit
+    ow_temp_cell = struct.unpack('>H', data[4:6])[0] * 0.1
+    parsed = {"Delta_Cell": f"{delta_cell:.3f} V", "OT_Cell": ot_cell, "OW_Temp_Cell": f"{ow_temp_cell:.1f} °C"}
+    pack_data.update(parsed)
+    return parsed
 
 def parse_pack_voltages_708(data):
+    global pack_data
     min_cell = data[0] * 0.01 + 2
     max_cell = data[1] * 0.01 + 2
     max_cell_delta = data[2] * 0.01
     vpack = data[3] / 1000
-    return {"Min_Cell": f"{min_cell:.3f} V", "Max_Cell": f"{max_cell:.3f} V", "Max_Cell_Delta": f"{max_cell_delta:.3f} V", "Vpack": f"{vpack:.3f} V"}
+    parsed = {"Min_Cell": f"{min_cell:.3f} V", "Max_Cell": f"{max_cell:.3f} V", "Max_Cell_Delta": f"{max_cell_delta:.3f} V", "Vpack": f"{vpack:.3f} V"}
+    pack_data.update(parsed)
+    return parsed
 
 def parse_cell_voltages_702(data):
+    global voltage_data
     voltages = {}
     for i in range(8):
         v = data[i] * 0.01 + 2
         voltages[f"V{i+1}"] = f"{v:.3f} V"
+    voltage_data.update(voltages)
     return voltages
 
 def parse_cell_voltages_703(data):
+    global voltage_data
     voltages = {}
-    for i in range(8):
+    for i in range(7):
         v = data[i] * 0.01 + 2
         voltages[f"V{i+9}"] = f"{v:.3f} V"
+    voltage_data.update(voltages)
     return voltages
 
 def parse_temperatures_700(data):
+    global temperature_data
     temps = {}
     labels = ["T1", "T2", "T3", "T4"]
     for i in range(4):
-        volt = struct.unpack('>H', data[i*2:(i+1)*2])[0]
+        adc = struct.unpack('>H', data[i*2:(i+1)*2])[0]
+        volt = (adc / 65535) * 3
         ntc = volt * 10000 / (3 - volt)
         t_kelvin = 1 / (1 / 298.15 - math.log(10000 / ntc) / 4100)
         t_celsius = t_kelvin - 273.15
         temps[labels[i]] = f"{t_celsius:.1f} °C"
+    temperature_data.update(temps)
     return temps
 
 def parse_temperatures_701(data):
+    global temperature_data
     temps = {}
-    labels = ["T5", "T6", "TPCB", "VAREF"]
-    for i in range(4):
-        volt = struct.unpack('>H', data[i*2:(i+1)*2])[0]
+    labels = ["T5", "T6", "TPCB"]  # VAREF excluded
+    for i in range(3):  # Only 3 values
+        adc = struct.unpack('>H', data[i*2:(i+1)*2])[0]
+        volt = (adc / 65535) * 3
         ntc = volt * 10000 / (3 - volt)
         t_kelvin = 1 / (1 / 298.15 - math.log(10000 / ntc) / 4100)
         t_celsius = t_kelvin - 273.15
         temps[labels[i]] = f"{t_celsius:.1f} °C"
+    temperature_data.update(temps)
     return temps
 
 parsers = {
@@ -132,29 +163,41 @@ parsers = {
 
 def can_listener():
     try:
-        bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=250000)
-        print("CAN bus connected on can0 with bitrate 250000")
+        bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=500000)
+        print("CAN bus connected on can0 with bitrate 500000")
         with open('receiveddata.jsonl', 'a') as f:
             while True:
                 msg = bus.recv()
                 if msg:
-                    # Konsola yaz
-                    print(f"Received: ID={msg.arbitration_id:X}, Data={msg.data.hex()}, DLC={msg.dlc}")
+                    # Konsola yaz (sadece belirli ID'ler için)
                     parsed = None
                     if msg.arbitration_id in parsers:
                         name, parser = parsers[msg.arbitration_id]
                         try:
                             parsed = parser(msg.data)
-                            print(f"Parsed {name}: {parsed}")
+                            # Print only for specific IDs: 0x706, 0x707
+                            if msg.arbitration_id in [0x706, 0x707]:
+                                print(f"Received: ID={msg.arbitration_id:X}, Data={msg.data.hex()}")
+                                if msg.arbitration_id == 0x706:
+                                    parsed_copy = parsed.copy()
+                                    parsed_copy['Combined_Error_Flags_Binary'] = bin(parsed['Combined_Error_Flags'])[2:].zfill(16)
+                                    print(f"Parsed {name}: {parsed_copy}")
+                                elif msg.arbitration_id == 0x707:
+                                    parsed_copy = parsed.copy()
+                                    ot_cell = parsed['OT_Cell']
+                                    parsed_copy['OT_Cell_Binary'] = bin(ot_cell)[2:].zfill(16)
+                                    active_ot_cells = [bit + 1 for bit in range(16) if ot_cell & (1 << bit)]
+                                    parsed_copy['Active_OT_Cells'] = active_ot_cells
+                                    print(f"Parsed {name}: {parsed_copy}")
+                                else:
+                                    print(f"Parsed {name}: {parsed}")
                         except Exception as e:
                             print(f"Parse error for {name}: {e}")
                     # JSONL'ye yaz
                     data = {
-                        "timestamp": time.time(),
-                        "id": msg.arbitration_id,
-                        "data": msg.data.hex(),
-                        "dlc": msg.dlc,
-                        "parsed": parsed
+                        "timestamp": datetime.fromtimestamp(time.time()).strftime('%d/%m/%Y %H:%M:%S'),
+                        "id": hex(msg.arbitration_id),
+                        "data": msg.data.hex()
                     }
                     f.write(json.dumps(data) + '\n')
                     f.flush()
@@ -202,10 +245,6 @@ def update_button_styles():
     pack_view_button.setStyleSheet(selected if current_page == "Pack View" else normal)
     # keep config button as icon-only (no text styling change)
     config_button.setStyleSheet("background-color: transparent; border: none;")
-
-window = QWidget()
-window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-window.setGeometry(100, 100, 1000, 540)
 
 window = QWidget()
 window.setWindowFlags(Qt.WindowType.FramelessWindowHint)
@@ -296,4 +335,10 @@ layout.addWidget(main_area)
 
 window.setLayout(layout)
 window.show()
+
+# Timer to update displays
+timer = QTimer()
+timer.timeout.connect(lambda: (voltage.update_voltage_display(), temperature.update_temperature_display(), packview.update_pack_display()))
+timer.start(1000)  # Update every 1 second
+
 sys.exit(app.exec())

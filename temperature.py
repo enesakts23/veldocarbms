@@ -3,6 +3,9 @@ from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QFrame, QVBoxLayout, Q
 from PyQt6.QtCore import Qt
 import random
 
+# Global lists to hold QLabel references for updating
+temperature_labels = []
+
 def create_temperature_page():
 
     page = QWidget()
@@ -40,7 +43,6 @@ def create_temperature_page():
     cell_h = int(cell_w * 1.5)
 
     for i in range(4):
-        temp = round(random.uniform(18.0, 45.0), 1)
         cell_widget = QWidget(module1_container)
         cell_widget.setFixedSize(cell_w, cell_h)
         cell_widget.setStyleSheet(f"""
@@ -51,10 +53,11 @@ def create_temperature_page():
                 border: 1px solid rgba(255,255,255,0.04);
             }}
         """)
-        cell_label = QLabel(f"{temp}°C", cell_widget)
+        cell_label = QLabel("", cell_widget)
         cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cell_label.setGeometry(0, 0, cell_w, cell_h)
         cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+        temperature_labels.append(cell_label)
         pole_w = 12
         pole_h = 12
         positive_pole = QLabel(cell_widget)
@@ -95,7 +98,6 @@ def create_temperature_page():
     cell_h2 = cell_h
 
     for i in range(3):
-        temp = round(random.uniform(18.0, 45.0), 1)
         cell_widget = QWidget(module2_container)
         cell_widget.setFixedSize(cell_w2, cell_h2)
         cell_widget.setStyleSheet(f"""
@@ -106,10 +108,11 @@ def create_temperature_page():
                 border: 1px solid rgba(255,255,255,0.04);
             }}
         """)
-        cell_label = QLabel(f"{temp}°C", cell_widget)
+        cell_label = QLabel("", cell_widget)
         cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cell_label.setGeometry(0, 0, cell_w2, cell_h2)
         cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+        temperature_labels.append(cell_label)
         if i != 2:  # Sadece 3. hücre için kutup başları olmayacak
             # Pozitif kutup başı (sol üst)
             pole_w = 12
@@ -129,8 +132,17 @@ def create_temperature_page():
             negative_pole.move(cell_w2 - (pole_w + 3), - (pole_h // 2))
         module2_cells_layout.addWidget(cell_widget)
 
-    module2_layout.addLayout(module2_cells_layout)
+        module2_layout.addLayout(module2_cells_layout)
     module2_container.setLayout(module2_layout)
     layout.addWidget(module2_container)
     
     return page
+
+def update_temperature_display():
+    import __main__ as main_mod
+    keys = ["T1", "T2", "T3", "T4", "T5", "T6", "TPCB"]
+    for i, key in enumerate(keys):
+        if key in main_mod.temperature_data:
+            temperature_labels[i].setText(main_mod.temperature_data[key])
+        else:
+            temperature_labels[i].setText("")

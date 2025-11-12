@@ -3,6 +3,10 @@ from PyQt6.QtCore import Qt, QTimer, QPointF
 from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QLinearGradient, QPolygonF, QFont
 import math
 
+# Global lists to hold QLabel references for updating
+pack_labels = []
+battery_widget = None
+
 
 class BatteryWidget(QWidget):
     def __init__(self, parent=None):
@@ -168,6 +172,7 @@ def create_pack_view_page():
         # Değer - beyaz renk
         value = QLabel(value_text)
         value.setStyleSheet("color: #ffffff; font-size: 16px; background: transparent; border: none;")
+        pack_labels.append(value)
         row_layout.addWidget(value)
 
         # Sağ tarafı doldur
@@ -190,6 +195,7 @@ def create_pack_view_page():
     right_container.setMaximumWidth(int(1000 * 0.32))
 
     # Place battery centered in right container
+    global battery_widget
     battery_widget = BatteryWidget()
     right_layout = QVBoxLayout()
     right_layout.setContentsMargins(12, 12, 12, 12)
@@ -298,3 +304,34 @@ def create_pack_view_page():
 
     page.setLayout(main_layout)
     return page
+
+def update_pack_display():
+    import __main__ as main_mod
+    keys = ["SOC", "SOH", "Vpack", "Bat_Status", "Current", "Min_Cell", "Max_Cell"]
+    for i, key in enumerate(keys):
+        if key in main_mod.pack_data:
+            if key == "Bat_Status":
+                # Bat_Status için state'e çevir
+                status = main_mod.pack_data[key]
+                if status == 0:
+                    state = "IDLE"
+                elif status == 1:
+                    state = "CHARGING"
+                elif status == 2:
+                    state = "DISCHARGING"
+                else:
+                    state = f"UNKNOWN({status})"
+                pack_labels[i].setText(state)
+            else:
+                pack_labels[i].setText(main_mod.pack_data[key])
+        else:
+            pack_labels[i].setText("")
+    
+    # Update battery SOC
+    if "SOC" in main_mod.pack_data:
+        soc_str = main_mod.pack_data["SOC"]
+        try:
+            soc_value = int(soc_str.rstrip('%'))
+            battery_widget.setLevel(soc_value)
+        except ValueError:
+            pass

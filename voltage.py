@@ -2,6 +2,9 @@ from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QFrame, QVBoxLayout, Q
 from PyQt6.QtCore import Qt
 import random
 
+# Global lists to hold QLabel references for updating
+voltage_labels = []
+
 def create_voltage_page():
 
     page = QWidget()
@@ -39,7 +42,6 @@ def create_voltage_page():
     cell_h = int(cell_w * 1.8)
 
     for i in range(8):
-        voltage = round(random.uniform(3.2, 3.6), 2)
         x_pos = 10 + i * (cell_w + cell_spacing)
         y_pos = 20
         cell_widget = QWidget(module1_container)
@@ -53,10 +55,11 @@ def create_voltage_page():
                 border: 1px solid rgba(255,255,255,0.04);
             }}
         """)
-        voltage_label = QLabel(f"{voltage}V", cell_widget)
+        voltage_label = QLabel("", cell_widget)
         voltage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         voltage_label.setGeometry(0, 0, cell_w, cell_h)
         voltage_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+        voltage_labels.append(voltage_label)
         # Pozitif kutup başı (sol üst)
         pole_w = 12
         pole_h = 12
@@ -91,8 +94,7 @@ def create_voltage_page():
     cell_w2 = cell_w
     cell_h2 = cell_h
 
-    for i in range(8):
-        voltage = round(random.uniform(3.2, 3.6), 2)
+    for i in range(7):
         x_pos = 10 + i * (cell_w2 + cell_spacing)
         y_pos = 20
         cell_widget = QWidget(module2_container)
@@ -106,10 +108,11 @@ def create_voltage_page():
                 border: 1px solid rgba(255,255,255,0.04);
             }}
         """)
-        voltage_label = QLabel(f"{voltage}V", cell_widget)
+        voltage_label = QLabel("", cell_widget)
         voltage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         voltage_label.setGeometry(0, 0, cell_w2, cell_h2)
         voltage_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+        voltage_labels.append(voltage_label)
         # Pozitif kutup başı (sol üst)
         pole_w = 12
         pole_h = 12
@@ -129,3 +132,12 @@ def create_voltage_page():
     layout.addWidget(module2_container)
     
     return page
+
+def update_voltage_display():
+    import __main__ as main_mod
+    for i in range(15):
+        key = f"V{i+1}"
+        if key in main_mod.voltage_data:
+            voltage_labels[i].setText(main_mod.voltage_data[key])
+        else:
+            voltage_labels[i].setText("")
