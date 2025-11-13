@@ -15,6 +15,9 @@ import struct
 import math
 import platform
 import subprocess
+import os
+
+os.environ['QT_LOGGING_RULES'] = '*.debug=false;*.warning=false'  # hata olmayan ama warning olan qt mesajlarını susuturmak için ekeldim. backend dışı bi hata olursa bulamassam bunu kladırmam lazım ki susuturlan bir uı warnnig i varsa görebileyim.
 
 # can den gelen dataalrı diğer sayfalarda kullanabilmek için global değişkenler oluşturdum.
 voltage_data = {}
@@ -151,7 +154,7 @@ def parse_temperatures_701(data):
     temperature_data.update(temps)
     return temps
 
-parsers = {
+parsers = {     # bu ksımda can mesaj id lerine göre hangi parser fonksiyonunun çağrılacağını belirtiyorum. Bunlar şimdilik ana mesajların geleceği can id ler böyle sıcaklık,voltaj, pack vb. gibi bilgiler geliyor parser etmek için can id  tanımlıyorum.
     0x704: ("PACK_STATUS_704", parse_pack_status_704),
     0x705: ("PACK_CURRENTS_705", parse_pack_currents_705),
     0x706: ("ERRORS_706", parse_errors_706),
@@ -252,8 +255,6 @@ header.setFixedHeight(50)
 header_layout = QHBoxLayout()
 header_layout.setContentsMargins(0, 0, 0, 0)
 header_layout.setSpacing(0)
-
-# Logo
 logo_label = QLabel()
 pixmap = QPixmap("veldologo.png")
 scaled_pixmap = pixmap.scaledToHeight(50, Qt.TransformationMode.SmoothTransformation)
@@ -261,7 +262,6 @@ logo_label.setPixmap(scaled_pixmap)
 logo_label.setFixedSize(100, 50)
 logo_label.setStyleSheet("background: transparent;")
 header_layout.addWidget(logo_label)
-# Spacer ekle
 spacer = QWidget()
 spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 header_layout.addWidget(spacer)
@@ -270,15 +270,11 @@ voltage_button = QPushButton("Voltage")
 voltage_button.setFixedSize(120, 40)
 voltage_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Voltage'), stacked_widget.setCurrentIndex(0), update_button_styles()])
 header_layout.addWidget(voltage_button)
-
-# Add spacing between buttons
 header_layout.addSpacing(15)
-
 temperature_button = QPushButton("Temperature")
 temperature_button.setFixedSize(140, 40)
 temperature_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Temperature'), stacked_widget.setCurrentIndex(1), update_button_styles()])
 header_layout.addWidget(temperature_button)
-
 header_layout.addSpacing(15)
 
 pack_view_button = QPushButton("Pack View")
@@ -302,7 +298,6 @@ power_button.setFlat(True)
 power_button.clicked.connect(app.quit)
 header_layout.addWidget(power_button)
 header.setLayout(header_layout)
-
 update_button_styles()
 main_area = QWidget()
 main_area.setStyleSheet("background-color: #1a1a2e;")
@@ -322,19 +317,14 @@ main_area_layout.addWidget(stacked_widget)
 main_area.setLayout(main_area_layout)
 stacked_widget.setCurrentIndex(0)
 
-
 layout = QVBoxLayout()
 layout.setContentsMargins(0, 0, 0, 0)
 layout.setSpacing(0)
 layout.addWidget(header)
 layout.addWidget(main_area)
-
 window.setLayout(layout)
 window.show()
-
-# Timer to update displays
 timer = QTimer()
 timer.timeout.connect(lambda: (voltage.update_voltage_display(), temperature.update_temperature_display(), packview.update_pack_display()))
-timer.start(1000)  # Update every 1 second
-
+timer.start(1000) 
 sys.exit(app.exec())
