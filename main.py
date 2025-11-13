@@ -16,7 +16,7 @@ import math
 import subprocess
 import platform
 
-# Global data storage
+# can den gelen dataalrı diğer sayfalarda kullanabilmek için global değişkenler oluşturdum.
 voltage_data = {}
 temperature_data = {}
 pack_data = {}
@@ -45,7 +45,6 @@ def parse_errors_706(data):
     error_flag_2 = data[1]
     combined_error_flags = (error_flag_2 << 8) | error_flag_1
     
-    # Bit definitions for errors
     error_bits = {
         0: "Over Voltage Cell",
         1: "Under Voltage Cell",
@@ -70,15 +69,15 @@ def parse_errors_706(data):
         if combined_error_flags & (1 << bit):
             active_errors.append(error_bits.get(bit, f"Unknown Bit {bit}"))
     
-    # OV Cell: data[2:4] - 16 bits, each bit represents a cell with OV error
+    # OV Cell
     ov_flags = struct.unpack('>H', data[2:4])[0]
     active_ov_cells = [bit + 1 for bit in range(16) if ov_flags & (1 << bit)]
     
-    # UV Cell: data[4:6] - 16 bits, each bit represents a cell with UV error
+    # UV Cell
     uv_flags = struct.unpack('>H', data[4:6])[0]
     active_uv_cells = [bit + 1 for bit in range(16) if uv_flags & (1 << bit)]
     
-    # OW Cell: data[6:8] - 16 bits, each bit represents a cell with OW error
+    # OW Cell
     ow_flags = struct.unpack('>H', data[6:8])[0]
     active_ow_cells = [bit + 1 for bit in range(16) if ow_flags & (1 << bit)]
     
@@ -140,8 +139,8 @@ def parse_temperatures_700(data):
 def parse_temperatures_701(data):
     global temperature_data
     temps = {}
-    labels = ["T5", "T6", "TPCB"]  # VAREF excluded
-    for i in range(3):  # Only 3 values
+    labels = ["T5", "T6", "TPCB"]  
+    for i in range(3): 
         adc = struct.unpack('>H', data[i*2:(i+1)*2])[0]
         volt = (adc / 65535) * 3
         ntc = volt * 10000 / (3 - volt)
@@ -151,7 +150,7 @@ def parse_temperatures_701(data):
     temperature_data.update(temps)
     return temps
 
-parsers = {
+parsers = {     # can data adresleri bu şekilde şimdilik 0x701-0x708 can id leri kullanımda.
     0x704: ("PACK_STATUS_704", parse_pack_status_704),
     0x705: ("PACK_CURRENTS_705", parse_pack_currents_705),
     0x706: ("ERRORS_706", parse_errors_706),
@@ -166,7 +165,7 @@ parsers = {
 def can_listener():
     try:
         if platform.system() == 'Linux':
-            # Bring down the CAN interface first
+            # Linuxta her seferinde manuel terimnalde uğraşmamak için terminal düzeyinde main.py çalışmadan otomatik bir şekilde can0 arayüzünü kapatıp açıyorum.
             subprocess.run(["sudo", "ip", "link", "set", "can0", "down"])
             subprocess.run(["sudo", "ip", "link", "set", "can0", "up", "type", "can", "bitrate", "500000"])
             bustype = 'socketcan'
@@ -183,14 +182,14 @@ def can_listener():
             while True:
                 msg = bus.recv()
                 if msg:
-                    # Konsola yaz (sadece belirli ID'ler için)
+
                     parsed = None
                     if msg.arbitration_id in parsers:
                         name, parser = parsers[msg.arbitration_id]
                         try:
                             parsed = parser(msg.data)
                             # Print only for specific IDs: 0x706, 0x707
-                            if msg.arbitration_id in [0x706, 0x707]:
+                            if msg.arbitration_id in [0x706, 0x707]:  # sadece test için 0x706 ve 0x707 yi parse ve ham datayı konsola basıyorum.
                                 print(f"Received: ID={msg.arbitration_id:X}, Data={msg.data.hex()}")
                                 if msg.arbitration_id == 0x706:
                                     parsed_copy = parsed.copy()
@@ -218,18 +217,16 @@ def can_listener():
     except Exception as e:
         print(f"CAN error: {e}")
 
-# CAN thread'ini başlat
+# CAN thread'ini burada ayağa kaldırıyorum.
 can_thread = threading.Thread(target=can_listener, daemon=True)
 can_thread.start()
 
 app = QApplication(sys.argv)
-current_page = "Voltage"  # default olarak voltage sayfası açılacak main.py başlatılıdığı zmaanç.
+current_page = "Voltage"  # main.py açıldığı gibi default olarak voltage.py yi açıyorum.
 
 def update_button_styles():
-    # Common colors
-    accent = "#00b51a"
 
-    # Unselected button: transparent background, accent colored border, white text
+    accent = "#00b51a"
     normal = f"""
     QPushButton {{
         background-color: transparent;
@@ -243,7 +240,6 @@ def update_button_styles():
     }}
     """
 
-    # Selected button: filled with accent color, black text
     selected = f"""
     QPushButton {{
         background-color: {accent};
@@ -257,7 +253,6 @@ def update_button_styles():
     voltage_button.setStyleSheet(selected if current_page == "Voltage" else normal)
     temperature_button.setStyleSheet(selected if current_page == "Temperature" else normal)
     pack_view_button.setStyleSheet(selected if current_page == "Pack View" else normal)
-    # keep config button as icon-only (no text styling change)
     config_button.setStyleSheet("background-color: transparent; border: none;")
 
 window = QWidget()
@@ -270,8 +265,6 @@ header.setFixedHeight(50)
 header_layout = QHBoxLayout()
 header_layout.setContentsMargins(0, 0, 0, 0)
 header_layout.setSpacing(0)
-
-# Logo
 logo_label = QLabel()
 pixmap = QPixmap("veldologo.png")
 scaled_pixmap = pixmap.scaledToHeight(50, Qt.TransformationMode.SmoothTransformation)
@@ -279,24 +272,20 @@ logo_label.setPixmap(scaled_pixmap)
 logo_label.setFixedSize(100, 50)
 logo_label.setStyleSheet("background: transparent;")
 header_layout.addWidget(logo_label)
-# Spacer ekle
 spacer = QWidget()
 spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 header_layout.addWidget(spacer)
-
 voltage_button = QPushButton("Voltage")
 voltage_button.setFixedSize(120, 40)
 voltage_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Voltage'), stacked_widget.setCurrentIndex(0), update_button_styles()])
 header_layout.addWidget(voltage_button)
-
-# Add spacing between buttons
 header_layout.addSpacing(15)
 
 temperature_button = QPushButton("Temperature")
 temperature_button.setFixedSize(140, 40)
-temperature_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Temperature'), stacked_widget.setCurrentIndex(1), update_button_styles()])
+temperature_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Temperature'), 
+stacked_widget.setCurrentIndex(1), update_button_styles()])
 header_layout.addWidget(temperature_button)
-
 header_layout.addSpacing(15)
 
 pack_view_button = QPushButton("Pack View")
@@ -340,18 +329,14 @@ main_area_layout.addWidget(stacked_widget)
 main_area.setLayout(main_area_layout)
 stacked_widget.setCurrentIndex(0)
 
-
 layout = QVBoxLayout()
 layout.setContentsMargins(0, 0, 0, 0)
 layout.setSpacing(0)
 layout.addWidget(header)
 layout.addWidget(main_area)
-
 window.setLayout(layout)
 window.show()
-
 timer = QTimer()
 timer.timeout.connect(lambda: (voltage.update_voltage_display(), temperature.update_temperature_display(), packview.update_pack_display()))
 timer.start(1000)  
-
 sys.exit(app.exec())

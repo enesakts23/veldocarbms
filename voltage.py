@@ -15,27 +15,22 @@ def create_voltage_page():
     layout.setContentsMargins(30, 30, 30, 30)
     page.setLayout(layout)
     
-    # Ekran boyutuna göre hücre boyutlarını hesapla
-    page_width = 1000 - 60  # margins çıkarıldıktan sonra
+    page_width = 1000 - 60  
     page_height = 540 - 60
-    cell_width = (page_width // 4) - 10  # 4 sütun için
-    cell_height = min(cell_width * 1.5, (page_height // 4) - 10)  # dikey dikdörtgen
+    cell_width = (page_width // 4) - 10  
+    cell_height = min(cell_width * 1.5, (page_height // 4) - 10)  
     
-    # Module-1 Container
     module1_container = QFrame()
-    # make container transparent so page background shows through
     module1_container.setStyleSheet('''
         QFrame {
             background: transparent;
             border-radius: 12px;
-            border: 2px solid #00b51a;
+            border: 4px solid #0077A8;
             padding: 12px;
         }
     ''')
-    # module1_container: don't set a layout so we can position children absolutely
-    
-    # compute per-cell size based on container available width
-    container_padding = 30  # left+right padding inside module
+
+    container_padding = 30  
     cell_spacing = 8
     container_inner_width = page_width - container_padding
     cell_w = max(48, int((container_inner_width - (cell_spacing * (8 - 1))) / 8))
@@ -60,7 +55,7 @@ def create_voltage_page():
         voltage_label.setGeometry(0, 0, cell_w, cell_h)
         voltage_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         voltage_labels.append(voltage_label)
-        # Pozitif kutup başı (sol üst)
+
         pole_w = 12
         pole_h = 12
         positive_pole = QLabel(cell_widget)
@@ -69,7 +64,7 @@ def create_voltage_page():
             "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
         )
         positive_pole.move(3, - (pole_h // 2))
-        # Negatif kutup başı (sağ üst)
+
         negative_pole = QLabel(cell_widget)
         negative_pole.setFixedSize(pole_w, pole_h)
         negative_pole.setStyleSheet(
@@ -78,19 +73,16 @@ def create_voltage_page():
         negative_pole.move(cell_w - (pole_w + 3), - (pole_h // 2))
     layout.addWidget(module1_container)
     
-    # Module-2 Container
     module2_container = QFrame()
     module2_container.setStyleSheet('''
         QFrame {
             background: transparent;
             border-radius: 12px;
-            border: 2px solid #00b51a;
+            border: 4px solid #0077A8;
             padding: 12px;
         }
     ''')
-    # module2_container: don't set a layout so we can position children absolutely
-    
-    # use same per-cell size as module1
+
     cell_w2 = cell_w
     cell_h2 = cell_h
 
@@ -113,7 +105,6 @@ def create_voltage_page():
         voltage_label.setGeometry(0, 0, cell_w2, cell_h2)
         voltage_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         voltage_labels.append(voltage_label)
-        # Pozitif kutup başı (sol üst)
         pole_w = 12
         pole_h = 12
         positive_pole = QLabel(cell_widget)
@@ -122,7 +113,6 @@ def create_voltage_page():
             "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
         )
         positive_pole.move(3, - (pole_h // 2))
-        # Negatif kutup başı (sağ üst)
         negative_pole = QLabel(cell_widget)
         negative_pole.setFixedSize(pole_w, pole_h)
         negative_pole.setStyleSheet(

@@ -128,7 +128,7 @@ def create_pack_view_page():
     left_container.setStyleSheet('''
         QFrame {
             background-color: transparent;
-            border: 2px solid #00b51a;
+            border: 4px solid #0077A8;
             border-radius: 10px;
         }
     ''')
@@ -141,7 +141,7 @@ def create_pack_view_page():
     left_layout.setSpacing(15)
 
     # Accent renk
-    accent_color = "#00b51a"
+    accent_color = "#0077A8"
 
     # Bilgi satırları - ikon ile birlikte
     info_items = [
@@ -208,7 +208,7 @@ def create_pack_view_page():
         QFrame {
             background-color: transparent;
             border-radius: 15px;
-            border: 2px solid #00b51a;
+            border: 4px solid #0077A8;
             padding: 1px;
         }
     ''')

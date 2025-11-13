@@ -24,7 +24,7 @@ def create_temperature_page():
         QFrame {
             background: transparent;
             border-radius: 12px;
-            border: 2px solid #00b51a;
+            border: 4px solid #0077A8;
             padding: 12px;
         }
     ''')
@@ -83,7 +83,7 @@ def create_temperature_page():
         QFrame {
             background: transparent;
             border-radius: 12px;
-            border: 2px solid #00b51a;
+            border: 4px solid #0077A8;
             padding: 12px;
         }
     ''')

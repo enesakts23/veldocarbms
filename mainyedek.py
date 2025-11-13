@@ -16,7 +16,7 @@ import math
 import platform
 import subprocess
 
-# Global data storage
+# can den gelen dataalrı diğer sayfalarda kullanabilmek için global değişkenler oluşturdum.
 voltage_data = {}
 temperature_data = {}
 pack_data = {}
@@ -70,15 +70,15 @@ def parse_errors_706(data):
         if combined_error_flags & (1 << bit):
             active_errors.append(error_bits.get(bit, f"Unknown Bit {bit}"))
     
-    # OV Cell: data[2:4] - 16 bits, each bit represents a cell with OV error
+    # OV Cell
     ov_flags = struct.unpack('>H', data[2:4])[0]
     active_ov_cells = [bit + 1 for bit in range(16) if ov_flags & (1 << bit)]
     
-    # UV Cell: data[4:6] - 16 bits, each bit represents a cell with UV error
+    # UV Cell
     uv_flags = struct.unpack('>H', data[4:6])[0]
     active_uv_cells = [bit + 1 for bit in range(16) if uv_flags & (1 << bit)]
     
-    # OW Cell: data[6:8] - 16 bits, each bit represents a cell with OW error
+    # OW Cell
     ow_flags = struct.unpack('>H', data[6:8])[0]
     active_ow_cells = [bit + 1 for bit in range(16) if ow_flags & (1 << bit)]
     
@@ -140,8 +140,8 @@ def parse_temperatures_700(data):
 def parse_temperatures_701(data):
     global temperature_data
     temps = {}
-    labels = ["T5", "T6", "TPCB"]  # VAREF excluded
-    for i in range(3):  # Only 3 values
+    labels = ["T5", "T6", "TPCB"] 
+    for i in range(3): 
         adc = struct.unpack('>H', data[i*2:(i+1)*2])[0]
         volt = (adc / 65535) * 3
         ntc = volt * 10000 / (3 - volt)
@@ -178,7 +178,6 @@ def can_listener():
             while True:
                 msg = bus.recv()
                 if msg:
-                    # Konsola yaz (sadece belirli ID'ler için)
                     parsed = None
                     if msg.arbitration_id in parsers:
                         name, parser = parsers[msg.arbitration_id]
@@ -186,8 +185,8 @@ def can_listener():
                             parsed = parser(msg.data)
                         except Exception as e:
                             print(f"Parse error for {name}: {e}")
-                    # JSONL'ye yaz
-                    data = {
+
+                    data = {  # Gelen CAN B dataalrını hex oalrak timestampt , can id  , ham (hext) datayı receiveddata.jsonl dosyası oluşturup içine yazıyorum. Dosya var ise alt satıra eklemeye deva mediyor.
                         "timestamp": datetime.fromtimestamp(time.time()).strftime('%d/%m/%Y %H:%M:%S'),
                         "id": hex(msg.arbitration_id),
                         "data": msg.data.hex()
@@ -213,10 +212,8 @@ app = QApplication(sys.argv)
 current_page = "Voltage"  # default olarak voltage sayfası açılacak main.py başlatılıdığı zmaanç.
 
 def update_button_styles():
-    # Common colors
-    accent = "#00b51a"
 
-    # Unselected button: transparent background, accent colored border, white text
+    accent = "#0077A8"
     normal = f"""
     QPushButton {{
         background-color: transparent;
@@ -226,7 +223,7 @@ def update_button_styles():
         padding: 0 20px;
     }}
     QPushButton:hover {{
-        background-color: rgba(0,181,26,0.08);
+        background-color: rgba(0,119,168,0.08);
     }}
     """
 
