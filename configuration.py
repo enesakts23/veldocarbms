@@ -115,8 +115,6 @@ def create_configuration_page():
             status_byte |= (1 << 0)
         if balance_buttons[0].isChecked():  # Manuel Balance
             status_byte |= (1 << 1)
-        if reset_buttons[0].isChecked():  # Reset BMU
-            status_byte |= (1 << 2)
         if operation_buttons[1].isChecked():  # Sleep BMU
             status_byte |= (1 << 3)
         if master_buttons[1].isChecked():  # BCU is Master
@@ -169,13 +167,6 @@ def create_configuration_page():
     # Make Reset BMU button checkable
     reset_buttons[0].setCheckable(True)
     
-    def on_reset_changed():
-        if reset_buttons[0].isChecked():
-            print("Button pressed: Reset BMU")
-            update_status_message()
-    
-    reset_buttons[0].clicked.connect(on_reset_changed)
-    
     #Master Mode
     master_widget, master_buttons = create_mode_widget("Master Mode", ["BMU is Master", "BCU is Master"])
     layout.addWidget(master_widget, 2, 0, 1, 1, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
@@ -217,5 +208,22 @@ def create_configuration_page():
         update_status_message()
 
     request_button_group.buttonClicked.connect(on_request_mode_changed)
+    
+    def on_reset_changed():
+        # Send reset message
+        message_bytes = [4] + [0] * 7  # 00000100 for Reset BMU
+        message_hex = ' '.join(f"{b:02X}" for b in message_bytes)
+        print("Button pressed: Reset BMU")
+        print(f"CAN ID 0x600: {message_hex}")
+        
+        # Reset all other buttons to default
+        power_buttons[1].setChecked(True)  # Normal Power Mode
+        balance_buttons[1].setChecked(True)  # Automatic Balance
+        operation_buttons[0].setChecked(True)  # Normal Operation
+        master_buttons[0].setChecked(True)  # BMU is Master
+        request_buttons[0].setChecked(True)  # Pull Mode
+        reset_buttons[0].setChecked(False)  # Uncheck reset button
+    
+    reset_buttons[0].clicked.connect(on_reset_changed)
     
     return page
