@@ -307,7 +307,7 @@ def create_pack_view_page():
 
 def update_pack_display():
     import __main__ as main_mod
-    keys = ["SOC", "SOH", "Vpack", "Bat_Status", "Max_Current", "Min_Cell", "Max_Cell"]
+    keys = ["SOC", "SOH", "Vpack", "Bat_Status", "Current", "Min_Cell", "Max_Cell"]
     for i, key in enumerate(keys):
         if key in main_mod.pack_data:
             if key == "Bat_Status":

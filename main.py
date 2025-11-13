@@ -36,7 +36,7 @@ def parse_pack_status_704(data):
 
 def parse_pack_currents_705(data):
     global pack_data
-    current = struct.unpack('>i', data[0:4])[0] / 100  # /100 for A
+    current = struct.unpack('<f', data[0:4])[0]  # Little-endian float
     fet_status = struct.unpack('>I', data[4:8])[0]
     parsed = {"Current": f"{current:.2f} A", "FET_Status": fet_status}
     pack_data.update(parsed)
