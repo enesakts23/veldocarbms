@@ -13,8 +13,8 @@ import time
 from datetime import datetime
 import struct
 import math
-import subprocess
 import platform
+import subprocess
 
 # can den gelen dataalrı diğer sayfalarda kullanabilmek için global değişkenler oluşturdum.
 voltage_data = {}
@@ -45,6 +45,7 @@ def parse_errors_706(data):
     error_flag_2 = data[1]
     combined_error_flags = (error_flag_2 << 8) | error_flag_1
     
+    # Bit definitions for errors
     error_bits = {
         0: "Over Voltage Cell",
         1: "Under Voltage Cell",
@@ -99,7 +100,7 @@ def parse_pack_voltages_708(data):
     min_cell = data[0] * 0.01 + 2
     max_cell = data[1] * 0.01 + 2
     max_cell_delta = data[2] * 0.01
-    vpack = data[3] / 1000
+    vpack = struct.unpack('<H', data[3:5])[0] / 10
     parsed = {"Min_Cell": f"{min_cell:.3f} V", "Max_Cell": f"{max_cell:.3f} V", "Max_Cell_Delta": f"{max_cell_delta:.3f} V", "Vpack": f"{vpack:.3f} V"}
     pack_data.update(parsed)
     return parsed
@@ -139,7 +140,7 @@ def parse_temperatures_700(data):
 def parse_temperatures_701(data):
     global temperature_data
     temps = {}
-    labels = ["T5", "T6", "TPCB"]  
+    labels = ["T5", "T6", "TPCB"] 
     for i in range(3): 
         adc = struct.unpack('>H', data[i*2:(i+1)*2])[0]
         volt = (adc / 65535) * 3
@@ -150,7 +151,7 @@ def parse_temperatures_701(data):
     temperature_data.update(temps)
     return temps
 
-parsers = {     # can data adresleri bu şekilde şimdilik 0x701-0x708 can id leri kullanımda.
+parsers = {
     0x704: ("PACK_STATUS_704", parse_pack_status_704),
     0x705: ("PACK_CURRENTS_705", parse_pack_currents_705),
     0x706: ("ERRORS_706", parse_errors_706),
@@ -165,49 +166,27 @@ parsers = {     # can data adresleri bu şekilde şimdilik 0x701-0x708 can id le
 def can_listener():
     try:
         if platform.system() == 'Linux':
-            # Linuxta her seferinde manuel terimnalde uğraşmamak için terminal düzeyinde main.py çalışmadan otomatik bir şekilde can0 arayüzünü kapatıp açıyorum.
-            subprocess.run(["sudo", "ip", "link", "set", "can0", "down"])
-            subprocess.run(["sudo", "ip", "link", "set", "can0", "up", "type", "can", "bitrate", "500000"])
-            bustype = 'socketcan'
-            channel = 'can0'
+            bus = can.interface.Bus(channel='can0', interface='socketcan', bitrate=500000)
+            print("CAN bus connected on can0 with bitrate 500000 (Linux socketcan)")
         elif platform.system() == 'Windows':
-            bustype = 'canalystii'
-            channel = (0, 1)
+            bus = can.interface.Bus(channel=(0, 1), interface='canalystii', bitrate=500000)
+            print("CAN bus connected on CANalyst-II channels 0 and 1 with bitrate 500000 (Windows)")
         else:
-            raise Exception("Unsupported platform")
-        
-        bus = can.interface.Bus(channel=channel, interface=bustype, bitrate=500000)
-        print(f"CAN bus connected on {channel} with bustype {bustype} and bitrate 500000")
+            print("Unsupported platform for CAN bus")
+            return
         with open('receiveddata.jsonl', 'a') as f:
             while True:
                 msg = bus.recv()
                 if msg:
-
                     parsed = None
                     if msg.arbitration_id in parsers:
                         name, parser = parsers[msg.arbitration_id]
                         try:
                             parsed = parser(msg.data)
-                            # Print only for specific IDs: 0x706, 0x707
-                            if msg.arbitration_id in [0x706, 0x707]:  # sadece test için 0x706 ve 0x707 yi parse ve ham datayı konsola basıyorum.
-                                print(f"Received: ID={msg.arbitration_id:X}, Data={msg.data.hex()}")
-                                if msg.arbitration_id == 0x706:
-                                    parsed_copy = parsed.copy()
-                                    parsed_copy['Combined_Error_Flags_Binary'] = bin(parsed['Combined_Error_Flags'])[2:].zfill(16)
-                                    print(f"Parsed {name}: {parsed_copy}")
-                                elif msg.arbitration_id == 0x707:
-                                    parsed_copy = parsed.copy()
-                                    ot_cell = parsed['OT_Cell']
-                                    parsed_copy['OT_Cell_Binary'] = bin(ot_cell)[2:].zfill(16)
-                                    active_ot_cells = [bit + 1 for bit in range(16) if ot_cell & (1 << bit)]
-                                    parsed_copy['Active_OT_Cells'] = active_ot_cells
-                                    print(f"Parsed {name}: {parsed_copy}")
-                                else:
-                                    print(f"Parsed {name}: {parsed}")
                         except Exception as e:
                             print(f"Parse error for {name}: {e}")
-                    # JSONL'ye yaz
-                    data = {
+
+                    data = {  # Gelen CAN B dataalrını hex oalrak timestampt , can id  , ham (hext) datayı receiveddata.jsonl dosyası oluşturup içine yazıyorum. Dosya var ise alt satıra eklemeye deva mediyor.
                         "timestamp": datetime.fromtimestamp(time.time()).strftime('%d/%m/%Y %H:%M:%S'),
                         "id": hex(msg.arbitration_id),
                         "data": msg.data.hex()
@@ -217,16 +196,24 @@ def can_listener():
     except Exception as e:
         print(f"CAN error: {e}")
 
-# CAN thread'ini burada ayağa kaldırıyorum.
+# CAN thread'ini başlat
+if platform.system() == 'Linux':
+    try:
+        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'down'], check=True)
+        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'up', 'type', 'can', 'bitrate', '500000'], check=True)
+        print("Executed: sudo ip link set can0 down and up")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to execute CAN interface commands: {e}")
+
 can_thread = threading.Thread(target=can_listener, daemon=True)
 can_thread.start()
 
 app = QApplication(sys.argv)
-current_page = "Voltage"  # main.py açıldığı gibi default olarak voltage.py yi açıyorum.
+current_page = "Voltage"  # default olarak voltage sayfası açılacak main.py başlatılıdığı zmaanç.
 
 def update_button_styles():
 
-    accent = "#00b51a"
+    accent = "#0077A8"
     normal = f"""
     QPushButton {{
         background-color: transparent;
@@ -236,7 +223,7 @@ def update_button_styles():
         padding: 0 20px;
     }}
     QPushButton:hover {{
-        background-color: rgba(0,181,26,0.08);
+        background-color: rgba(0,119,168,0.08);
     }}
     """
 
@@ -265,6 +252,8 @@ header.setFixedHeight(50)
 header_layout = QHBoxLayout()
 header_layout.setContentsMargins(0, 0, 0, 0)
 header_layout.setSpacing(0)
+
+# Logo
 logo_label = QLabel()
 pixmap = QPixmap("veldologo.png")
 scaled_pixmap = pixmap.scaledToHeight(50, Qt.TransformationMode.SmoothTransformation)
@@ -272,20 +261,24 @@ logo_label.setPixmap(scaled_pixmap)
 logo_label.setFixedSize(100, 50)
 logo_label.setStyleSheet("background: transparent;")
 header_layout.addWidget(logo_label)
+# Spacer ekle
 spacer = QWidget()
 spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 header_layout.addWidget(spacer)
+
 voltage_button = QPushButton("Voltage")
 voltage_button.setFixedSize(120, 40)
 voltage_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Voltage'), stacked_widget.setCurrentIndex(0), update_button_styles()])
 header_layout.addWidget(voltage_button)
+
+# Add spacing between buttons
 header_layout.addSpacing(15)
 
 temperature_button = QPushButton("Temperature")
 temperature_button.setFixedSize(140, 40)
-temperature_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Temperature'), 
-stacked_widget.setCurrentIndex(1), update_button_styles()])
+temperature_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Temperature'), stacked_widget.setCurrentIndex(1), update_button_styles()])
 header_layout.addWidget(temperature_button)
+
 header_layout.addSpacing(15)
 
 pack_view_button = QPushButton("Pack View")
@@ -329,14 +322,19 @@ main_area_layout.addWidget(stacked_widget)
 main_area.setLayout(main_area_layout)
 stacked_widget.setCurrentIndex(0)
 
+
 layout = QVBoxLayout()
 layout.setContentsMargins(0, 0, 0, 0)
 layout.setSpacing(0)
 layout.addWidget(header)
 layout.addWidget(main_area)
+
 window.setLayout(layout)
 window.show()
+
+# Timer to update displays
 timer = QTimer()
 timer.timeout.connect(lambda: (voltage.update_voltage_display(), temperature.update_temperature_display(), packview.update_pack_display()))
-timer.start(1000)  
+timer.start(1000)  # Update every 1 second
+
 sys.exit(app.exec())
