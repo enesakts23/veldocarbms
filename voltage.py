@@ -128,6 +128,18 @@ def update_voltage_display():
     for i in range(15):
         key = f"V{i+1}"
         if key in main_mod.voltage_data:
-            voltage_labels[i].setText(main_mod.voltage_data[key])
+            voltage_str = main_mod.voltage_data[key]
+            try:
+                # Extract the numeric part and unit
+                parts = voltage_str.split()
+                if len(parts) >= 2:
+                    voltage_value = float(parts[0])
+                    unit = parts[1]
+                    formatted_voltage = f"{voltage_value:.2f} {unit}"
+                else:
+                    formatted_voltage = voltage_str
+            except ValueError:
+                formatted_voltage = voltage_str
+            voltage_labels[i].setText(formatted_voltage)
         else:
             voltage_labels[i].setText("")

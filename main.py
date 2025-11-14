@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy, QLabel, QStackedWidget
 from PyQt6.QtGui import QIcon, QPixmap
-from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtCore import Qt, QSize, QTimer, pyqtSignal, QObject
 import voltage
 import temperature
 import packview
@@ -16,6 +16,11 @@ import math
 import platform
 import subprocess
 import os
+
+class CanReceiver(QObject):
+    data_received = pyqtSignal()
+
+can_receiver = CanReceiver()
 
 os.environ['QT_LOGGING_RULES'] = '*.debug=false;*.warning=false'  # hata olmayan ama warning olan qt mesajlarını susuturmak için ekeldim. backend dışı bi hata olursa bulamassam bunu kladırmam lazım ki susuturlan bir uı warnnig i varsa görebileyim.
 
@@ -181,6 +186,7 @@ def can_listener():
             while True:
                 msg = bus.recv()
                 if msg:
+                    can_receiver.data_received.emit()
                     parsed = None
                     if msg.arbitration_id in parsers:
                         name, parser = parsers[msg.arbitration_id]
@@ -188,6 +194,17 @@ def can_listener():
                             parsed = parser(msg.data)
                         except Exception as e:
                             print(f"Parse error for {name}: {e}")
+
+                    if msg.arbitration_id == 0x706:
+                        print(f"Raw data for 0x706: {msg.data.hex()}")
+                        if parsed:
+                            print(f"Parsed data: {parsed}")
+                            combined_error_flags = parsed["Combined_Error_Flags"]
+                            active_errors = parsed["Active_Errors"]
+                            binary_flags = f"{combined_error_flags:016b}"
+                            print(f"Error flag value: {combined_error_flags} (binary: {binary_flags})")
+                            print(f"Error meanings: {', '.join(active_errors)}")
+                        print("---")
 
                     data = {  # Gelen CAN B dataalrını hex oalrak timestampt , can id  , ham (hext) datayı receiveddata.jsonl dosyası oluşturup içine yazıyorum. Dosya var ise alt satıra eklemeye deva mediyor.
                         "timestamp": datetime.fromtimestamp(time.time()).strftime('%d/%m/%Y %H:%M:%S'),
@@ -211,7 +228,12 @@ if platform.system() == 'Linux':
 can_thread = threading.Thread(target=can_listener, daemon=True)
 can_thread.start()
 
+def check_can_indicator():
+    can_indicator.setStyleSheet("background-color: #00ed08; border-radius: 10px;")
+    QTimer.singleShot(10, lambda: can_indicator.setStyleSheet("background-color: #000000; border-radius: 10px;"))
+
 app = QApplication(sys.argv)
+can_receiver.data_received.connect(check_can_indicator)
 current_page = "Voltage"  # default olarak voltage sayfası açılacak main.py başlatılıdığı zmaanç.
 
 def update_button_styles():
@@ -262,6 +284,14 @@ logo_label.setPixmap(scaled_pixmap)
 logo_label.setFixedSize(100, 50)
 logo_label.setStyleSheet("background: transparent;")
 header_layout.addWidget(logo_label)
+
+# CAN indicator circle
+can_indicator = QLabel()
+can_indicator.setFixedSize(20, 20)
+can_indicator.setStyleSheet("background-color: #000000; border-radius: 10px;")
+header_layout.addWidget(can_indicator)
+header_layout.addSpacing(10)
+
 spacer = QWidget()
 spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 header_layout.addWidget(spacer)
@@ -325,6 +355,10 @@ layout.addWidget(main_area)
 window.setLayout(layout)
 window.show()
 timer = QTimer()
-timer.timeout.connect(lambda: (voltage.update_voltage_display(), temperature.update_temperature_display(), packview.update_pack_display()))
+timer.timeout.connect(lambda: (
+    voltage.update_voltage_display(), 
+    temperature.update_temperature_display(), 
+    packview.update_pack_display()
+))
 timer.start(1000) 
 sys.exit(app.exec())

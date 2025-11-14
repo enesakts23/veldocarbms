@@ -6,6 +6,10 @@ import math
 # Global lists to hold QLabel references for updating
 pack_labels = []
 battery_widget = None
+idl_button = None
+chr_button = None
+dsc_button = None
+update_button_styles_func = None
 
 
 class BatteryWidget(QWidget):
@@ -115,6 +119,7 @@ class BatteryWidget(QWidget):
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, f"{soc:.0f}%")
 
 def create_pack_view_page():
+    global idl_button, chr_button, dsc_button, update_button_styles_func
     page = QWidget()
     page.setStyleSheet("background-color: #000000;")
     page.setMinimumSize(1000, 540)
@@ -277,13 +282,12 @@ def create_pack_view_page():
     def update_button_styles():
         for b in (dsc_button, idl_button, chr_button):
             b.setStyleSheet(selected_style if b.isChecked() else normal_style)
-        
-        # Show/hide charging icon based on CHR selection
-        charging_icon.setVisible(chr_button.isChecked())
     
     # Initial style update
     update_button_styles()
     button_group.buttonClicked.connect(lambda: update_button_styles())
+    
+    update_button_styles_func = update_button_styles
     
     button_layout.addStretch()
     button_layout.addWidget(dsc_button)
@@ -341,5 +345,20 @@ def update_pack_display():
         try:
             soc_value = int(soc_str.rstrip('%'))
             battery_widget.setLevel(soc_value)
+        except ValueError:
+            pass
+    
+    # Update button based on current value
+    if "Current" in main_mod.pack_data:
+        current_str = main_mod.pack_data["Current"]
+        try:
+            current_val = float(current_str.split()[0])
+            if -0.05 <= current_val <= 0.05:
+                idl_button.setChecked(True)
+            elif current_val < -0.05:
+                chr_button.setChecked(True)
+            elif current_val > 0.05:
+                dsc_button.setChecked(True)
+            update_button_styles_func()
         except ValueError:
             pass
