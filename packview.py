@@ -315,16 +315,15 @@ def update_pack_display():
     for i, key in enumerate(keys):
         if key in main_mod.pack_data:
             if key == "Bat_Status":
-                # Bat_Status için state'e çevir
-                status = main_mod.pack_data[key]
-                if status == 0:
+                # State'i buton durumuna göre belirle
+                if idl_button and idl_button.isChecked():
                     state = "IDLE"
-                elif status == 1:
+                elif chr_button and chr_button.isChecked():
                     state = "CHARGING"
-                elif status == 2:
+                elif dsc_button and dsc_button.isChecked():
                     state = "DISCHARGING"
                 else:
-                    state = f"UNKNOWN({status})"
+                    state = "UNKNOWN"
                 pack_labels[i].setText(state)
             elif key == "Vpack":
                 # Vpack için iki basamak göster
