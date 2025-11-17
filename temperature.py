@@ -1,10 +1,82 @@
 
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QFrame, QVBoxLayout, QHBoxLayout
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPainter, QPen, QColor
 import random
 
 # Global lists to hold QLabel references for updating
 temperature_labels = []
+
+class TemperatureCell(QFrame):
+    def __init__(self, parent=None, has_poles=True):
+        super().__init__(parent)
+        self.setStyleSheet("border: none;")
+        self.error_mode = False
+        self.cell_label = QLabel("", self)
+        self.cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.cell_label.setGeometry(0, 0, self.width(), self.height())
+        self.cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+        temperature_labels.append(self.cell_label)
+
+        if has_poles:
+            pole_w = 12
+            pole_h = 12
+            self.positive_pole = QLabel(self)
+            self.positive_pole.setFixedSize(pole_w, pole_h)
+            self.positive_pole.setStyleSheet(
+                "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+            )
+            self.positive_pole.move(3, - (pole_h // 2))
+            self.negative_pole = QLabel(self)
+            self.negative_pole.setFixedSize(pole_w, pole_h)
+            self.negative_pole.setStyleSheet(
+                "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
+            )
+
+    def set_error_mode(self, error):
+        self.error_mode = error
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        if self.error_mode:
+            self.draw_error_background(painter)
+        else:
+            painter.setBrush(QColor("#2b2b2b"))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(self.rect(), 8, 8)
+
+    def draw_error_background(self, painter):
+        rect = self.rect()
+        painter.setBrush(QColor("#2C2C2C"))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(rect, 8, 8)
+        painter.setPen(QPen(QColor(0, 0, 0, 180), 2))
+        
+        line_spacing = 8
+        
+        start_x = rect.x() - rect.height()
+        while start_x < rect.x() + rect.width():
+            painter.drawLine(
+                int(start_x), int(rect.y()),
+                int(start_x + rect.height()), int(rect.y() + rect.height())
+            )
+            start_x += line_spacing
+
+        start_x = rect.x() + rect.width() + rect.height()
+        while start_x > rect.x() - rect.height():
+            painter.drawLine(
+                int(start_x), int(rect.y()),
+                int(start_x - rect.height()), int(rect.y() + rect.height())
+            )
+            start_x -= line_spacing
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.cell_label.setGeometry(0, 0, self.width(), self.height())
+        if hasattr(self, 'negative_pole'):
+            self.negative_pole.move(self.width() - (12 + 3), - (12 // 2))
 
 def create_temperature_page():
 
@@ -43,35 +115,8 @@ def create_temperature_page():
     cell_h = int(cell_w * 1.5)
 
     for i in range(4):
-        cell_widget = QWidget(module1_container)
+        cell_widget = TemperatureCell(module1_container)
         cell_widget.setFixedSize(cell_w, cell_h)
-        cell_widget.setStyleSheet(f"""
-            QWidget {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2b2b2b, stop:1 #1f1f1f);
-                border-radius: 8px;
-                border: 1px solid rgba(255,255,255,0.04);
-            }}
-        """)
-        cell_label = QLabel("", cell_widget)
-        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cell_label.setGeometry(0, 0, cell_w, cell_h)
-        cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
-        temperature_labels.append(cell_label)
-        pole_w = 12
-        pole_h = 12
-        positive_pole = QLabel(cell_widget)
-        positive_pole.setFixedSize(pole_w, pole_h)
-        positive_pole.setStyleSheet(
-            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
-        )
-        positive_pole.move(3, - (pole_h // 2))
-        negative_pole = QLabel(cell_widget)
-        negative_pole.setFixedSize(pole_w, pole_h)
-        negative_pole.setStyleSheet(
-            "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
-        )
-        negative_pole.move(cell_w - (pole_w + 3), - (pole_h // 2))
         module1_cells_layout.addWidget(cell_widget)
 
     module1_layout.addLayout(module1_cells_layout)
@@ -98,41 +143,12 @@ def create_temperature_page():
     cell_h2 = cell_h
 
     for i in range(3):
-        cell_widget = QWidget(module2_container)
+        has_poles = (i != 2)
+        cell_widget = TemperatureCell(module2_container, has_poles=has_poles)
         cell_widget.setFixedSize(cell_w2, cell_h2)
-        cell_widget.setStyleSheet(f"""
-            QWidget {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2b2b2b, stop:1 #1f1f1f);
-                border-radius: 8px;
-                border: 1px solid rgba(255,255,255,0.04);
-            }}
-        """)
-        cell_label = QLabel("", cell_widget)
-        cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cell_label.setGeometry(0, 0, cell_w2, cell_h2)
-        cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
-        temperature_labels.append(cell_label)
-        if i != 2:  # Sadece 3. hücre için kutup başları olmayacak
-            # Pozitif kutup başı (sol üst)
-            pole_w = 12
-            pole_h = 12
-            positive_pole = QLabel(cell_widget)
-            positive_pole.setFixedSize(pole_w, pole_h)
-            positive_pole.setStyleSheet(
-                "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
-            )
-            positive_pole.move(3, - (pole_h // 2))
-            # Negatif kutup başı (sağ üst)
-            negative_pole = QLabel(cell_widget)
-            negative_pole.setFixedSize(pole_w, pole_h)
-            negative_pole.setStyleSheet(
-                "background-color: #808080; border: 2px solid #606060; border-radius: 3px;"
-            )
-            negative_pole.move(cell_w2 - (pole_w + 3), - (pole_h // 2))
         module2_cells_layout.addWidget(cell_widget)
 
-        module2_layout.addLayout(module2_cells_layout)
+    module2_layout.addLayout(module2_cells_layout)
     module2_container.setLayout(module2_layout)
     layout.addWidget(module2_container)
     
@@ -140,9 +156,28 @@ def create_temperature_page():
 
 def update_temperature_display():
     import __main__ as main_mod
+    error_mode = getattr(main_mod, 'error_flag', False)
+    active_errors = getattr(main_mod, 'active_errors', [])
+    critical_errors = ["Ic fail", "Open Wire", "Can Error"]
+    error_text = ""
+    for err in critical_errors:
+        if err in active_errors:
+            if err == "Ic fail":
+                error_text = "IC F."
+            elif err == "Open Wire":
+                error_text = "O.W."
+            elif err == "Can Error":
+                error_text = "C.E."
+            break
     keys = ["T1", "T2", "T3", "T4", "T5", "T6", "TPCB"]
     for i, key in enumerate(keys):
-        if key in main_mod.temperature_data:
-            temperature_labels[i].setText(main_mod.temperature_data[key])
+        cell_widget = temperature_labels[i].parent()
+        if hasattr(cell_widget, 'set_error_mode'):
+            cell_widget.set_error_mode(error_mode)
+        if error_mode:
+            temperature_labels[i].setText(error_text)
         else:
-            temperature_labels[i].setText("")
+            if key in main_mod.temperature_data:
+                temperature_labels[i].setText(main_mod.temperature_data[key])
+            else:
+                temperature_labels[i].setText("")

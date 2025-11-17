@@ -28,6 +28,8 @@ os.environ['QT_LOGGING_RULES'] = '*.debug=false;*.warning=false'  # hata olmayan
 voltage_data = {}
 temperature_data = {}
 pack_data = {}
+error_flag = False
+active_errors = []
 
 def parse_pack_status_704(data):
     global pack_data
@@ -49,6 +51,8 @@ def parse_pack_currents_705(data):
 
 def parse_errors_706(data):
     global pack_data
+    global error_flag
+    global active_errors
     error_flag_1 = data[0]
     error_flag_2 = data[1]
     combined_error_flags = (error_flag_2 << 8) | error_flag_1
@@ -77,6 +81,10 @@ def parse_errors_706(data):
     for bit in range(16):
         if combined_error_flags & (1 << bit):
             active_errors.append(error_bits.get(bit, f"Unknown Bit {bit}"))
+    
+    # Check for critical errors
+    critical_errors = ["Ic fail", "Open Wire", "Can Error"]
+    error_flag = any(error in active_errors for error in critical_errors)
     
     # OV Cell
     ov_flags = struct.unpack('>H', data[2:4])[0]
