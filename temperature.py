@@ -1,8 +1,9 @@
-
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QFrame, QVBoxLayout, QHBoxLayout
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPainter, QPen, QColor
+from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtGui import QPainter, QPen, QColor, QPainterPath, QBrush
 import random
+import math
+from PyQt6.QtCore import QTimer
 
 # Global lists to hold QLabel references for updating
 temperature_labels = []
@@ -12,6 +13,12 @@ class TemperatureCell(QFrame):
         super().__init__(parent)
         self.setStyleSheet("border: none;")
         self.error_mode = False
+        self.high_temp_mode = False
+        # Animation için wave offset ve timer
+        self.wave_offset = 0
+        self.repaint_timer = QTimer(self)
+        self.repaint_timer.timeout.connect(self.update_animation)
+        self.repaint_timer.start(80)  # 80ms'de bir güncelle
         self.cell_label = QLabel("", self)
         self.cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.cell_label.setGeometry(0, 0, self.width(), self.height())
@@ -37,11 +44,17 @@ class TemperatureCell(QFrame):
         self.error_mode = error
         self.update()
 
+    def set_high_temp_mode(self, high_temp):
+        self.high_temp_mode = high_temp
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         if self.error_mode:
             self.draw_error_background(painter)
+        elif self.high_temp_mode:
+            self.draw_wave_background(painter)
         else:
             painter.setBrush(QColor("#2b2b2b"))
             painter.setPen(Qt.PenStyle.NoPen)
@@ -72,11 +85,59 @@ class TemperatureCell(QFrame):
             )
             start_x -= line_spacing
 
+    def draw_wave_background(self, painter):
+        rect = self.rect()
+        painter.setBrush(QBrush(QColor("#2C2C2C")))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(rect, 8, 8)
+
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(rect), 8, 8)
+        painter.setClipPath(path)
+        
+        wave_colors = [
+            QColor(255, 0, 0, 120),    
+            QColor(255, 80, 80, 90),   
+            QColor(255, 150, 150, 60)  
+        ]
+        
+        wave_heights = [rect.height() * 0.4, rect.height() * 0.3, rect.height() * 0.2]
+        wave_speeds = [1.0, 1.8, 2.5]
+        
+        for i, (color, height, speed) in enumerate(zip(wave_colors, wave_heights, wave_speeds)):
+            painter.setBrush(QBrush(color))
+            painter.setPen(Qt.PenStyle.NoPen)
+            wave_path = QPainterPath()
+            start_x = rect.x()
+            start_y = rect.y() + rect.height() - height
+            
+            wave_path.moveTo(start_x, start_y)
+            
+            for x in range(int(rect.width()) + 1):
+                wave_x = start_x + x
+                wave_y = start_y + height * 0.5 * math.sin((x * 0.1 + self.wave_offset * speed + i * math.pi / 3))
+                wave_path.lineTo(wave_x, wave_y)
+            
+            wave_path.lineTo(rect.x() + rect.width(), rect.y() + rect.height())
+            wave_path.lineTo(rect.x(), rect.y() + rect.height())
+            wave_path.closeSubpath()
+            
+            painter.drawPath(wave_path)
+        
+        painter.setClipping(False)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.cell_label.setGeometry(0, 0, self.width(), self.height())
         if hasattr(self, 'negative_pole'):
             self.negative_pole.move(self.width() - (12 + 3), - (12 // 2))
+
+    def update_animation(self):
+        """Animation timer için güncelleme fonksiyonu"""
+        self.wave_offset += 0.5  # Dalga hızını artırdık
+        if self.wave_offset > 2 * math.pi:  # 2π
+            self.wave_offset = 0
+        self.update()
 
 def create_temperature_page():
 
@@ -157,6 +218,8 @@ def create_temperature_page():
 def update_temperature_display():
     import __main__ as main_mod
     error_mode = getattr(main_mod, 'error_flag', False)
+    high_temp_mode = getattr(main_mod, 'high_temp_flag', False)
+    high_temp_widgets = getattr(main_mod, 'high_temp_widgets', [])
     active_errors = getattr(main_mod, 'active_errors', [])
     critical_errors = ["Ic fail", "Open Wire", "Can Error"]
     error_text = ""
@@ -174,10 +237,14 @@ def update_temperature_display():
         cell_widget = temperature_labels[i].parent()
         if hasattr(cell_widget, 'set_error_mode'):
             cell_widget.set_error_mode(error_mode)
+        if hasattr(cell_widget, 'set_high_temp_mode'):
+            is_high_temp = (i+1) in high_temp_widgets if high_temp_mode else False
+            cell_widget.set_high_temp_mode(is_high_temp)
         if error_mode:
             temperature_labels[i].setText(error_text)
+        elif is_high_temp:
+            temperature_labels[i].setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+            temperature_labels[i].setText(main_mod.temperature_data.get(key, ""))
         else:
-            if key in main_mod.temperature_data:
-                temperature_labels[i].setText(main_mod.temperature_data[key])
-            else:
-                temperature_labels[i].setText("")
+            temperature_labels[i].setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
+            temperature_labels[i].setText(main_mod.temperature_data.get(key, ""))

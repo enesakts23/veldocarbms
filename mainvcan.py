@@ -29,6 +29,9 @@ voltage_data = {}
 temperature_data = {}
 pack_data = {}
 error_flag = False
+high_temp_flag = False
+high_temp_widgets = []
+active_errors = []
 active_errors = []
 
 def parse_pack_status_704(data):
@@ -52,6 +55,7 @@ def parse_pack_currents_705(data):
 def parse_errors_706(data):
     global pack_data
     global error_flag
+    global high_temp_flag
     global active_errors
     error_flag_1 = data[0]
     error_flag_2 = data[1]
@@ -86,21 +90,8 @@ def parse_errors_706(data):
     critical_errors = ["Ic fail", "Open Wire", "Can Error"]
     error_flag = any(error in active_errors for error in critical_errors)
     
-    # OV Cell
-    ov_flags = struct.unpack('>H', data[2:4])[0]
-    active_ov_cells = [bit + 1 for bit in range(16) if ov_flags & (1 << bit)]
-    
-    # UV Cell
-    uv_flags = struct.unpack('>H', data[4:6])[0]
-    active_uv_cells = [bit + 1 for bit in range(16) if uv_flags & (1 << bit)]
-    
-    # OW Cell
-    ow_flags = struct.unpack('>H', data[6:8])[0]
-    active_ow_cells = [bit + 1 for bit in range(16) if ow_flags & (1 << bit)]
-    
-    parsed = {"Combined_Error_Flags": combined_error_flags, "Active_Errors": active_errors, "Active_OV_Cells": active_ov_cells, "Active_UV_Cells": active_uv_cells, "Active_OW_Cells": active_ow_cells}
-    pack_data.update(parsed)
-    return parsed
+    # Check for high temperature
+    high_temp_flag = "High temperature Cell" in active_errors
 
 def parse_warnings_707(data):
     global pack_data
@@ -144,6 +135,11 @@ def parse_warnings_707(data):
         "OW_Bin": ow_bin,
     }
     pack_data.update(parsed)
+    
+    global high_temp_widgets
+    if high_temp_flag:
+        high_temp_widgets = ot_active_widgets
+    
     return parsed
 
 def parse_pack_voltages_708(data):
