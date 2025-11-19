@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QFrame, QLabel, QVBoxLayout, QPushButton, QButtonGroup
-from PyQt6.QtCore import Qt, QTimer, QPointF
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QFrame, QLabel, QVBoxLayout, QPushButton, QButtonGroup, QDialog
+from PyQt6.QtCore import Qt, QTimer, QPointF, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QLinearGradient, QPolygonF, QFont
 import math
 
@@ -10,6 +10,76 @@ idl_button = None
 chr_button = None
 dsc_button = None
 update_button_styles_func = None
+switches = []
+page = None
+
+
+class AnimatedSwitch(QWidget):
+    toggled = pyqtSignal(bool)
+    
+    def __init__(self, name, parent=None):
+        super().__init__(parent)
+        self.name = name
+        self.setFixedSize(50, 26)
+        self._checked = False
+        self._circle_position = 0
+        self.animation = QPropertyAnimation(self, b"circle_position", self)
+        self.animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self.animation.setDuration(200)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+    @pyqtProperty(int)
+    def circle_position(self):
+        return self._circle_position
+    
+    @circle_position.setter
+    def circle_position(self, pos):
+        self._circle_position = pos
+        self.update()
+    
+    def isChecked(self):
+        return self._checked
+    
+    def setChecked(self, checked):
+        if self._checked == checked:
+            return
+        self._checked = checked
+        self.animation.stop()
+        if checked:
+            self.animation.setStartValue(self._circle_position)
+            self.animation.setEndValue(24)
+        else:
+            self.animation.setStartValue(self._circle_position)
+            self.animation.setEndValue(0)
+        self.animation.start()
+        self.toggled.emit(self._checked)
+    
+    def mousePressEvent(self, event):
+        action = "activated" if not self._checked else "deactivated"
+        dialog = ConfirmationDialog(f"{self.name} will be {action}, are you sure?", parent=page)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.setChecked(not self._checked)
+        super().mousePressEvent(event)
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Background track
+        if self._checked:
+            track_color = QColor("#0077A8")
+        else:
+            track_color = QColor("#3a3a4e")
+        
+        painter.setBrush(QBrush(track_color))
+        painter.setPen(QPen(QColor("#0077A8"), 2))
+        painter.drawRoundedRect(0, 0, 50, 26, 13, 13)
+        
+        # Moving circle
+        circle_color = QColor("#ffffff")
+        painter.setBrush(QBrush(circle_color))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(self._circle_position + 3, 3, 20, 20)
 
 
 class BatteryWidget(QWidget):
@@ -118,8 +188,79 @@ class BatteryWidget(QWidget):
         painter.setPen(QPen(QColor("#ffffff"), 2))
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, f"{soc:.0f}%")
 
+
+class ConfirmationDialog(QDialog):
+    def __init__(self, message, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Confirmation")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #000000;
+                color: #ffffff;
+                border: 4px solid #0077A8;
+                border-radius: 10px;
+            }
+        """)
+        self.setModal(True)
+        self.setFixedSize(300, 150)
+        
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        label = QLabel(message)
+        label.setStyleSheet("color: #ffffff; font-size: 14px; background: transparent;")
+        label.setWordWrap(True)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+        
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+        
+        yes_button = QPushButton("Yes")
+        yes_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0077A8;
+                color: #000000;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #005577;
+            }
+        """)
+        yes_button.clicked.connect(self.accept)
+        
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #ffffff;
+                border: 2px solid #0077A8;
+                border-radius: 5px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 119, 168, 0.1);
+            }
+        """)
+        cancel_button.clicked.connect(self.reject)
+        
+        button_layout.addStretch()
+        button_layout.addWidget(yes_button)
+        button_layout.addWidget(cancel_button)
+        button_layout.addStretch()
+        
+        layout.addLayout(button_layout)
+        self.setLayout(layout)
+
+
 def create_pack_view_page():
-    global idl_button, chr_button, dsc_button, update_button_styles_func
+    global idl_button, chr_button, dsc_button, update_button_styles_func, switches, page
     page = QWidget()
     page.setStyleSheet("background-color: #000000;")
     page.setMinimumSize(1000, 540)
@@ -128,7 +269,7 @@ def create_pack_view_page():
     main_layout.setContentsMargins(20, 20, 20, 20)
     main_layout.setSpacing(20)
 
-    # Sol container (%70 yer kaplayacak)
+    # Sol container (%55 yer kaplayacak)
     left_container = QFrame()
     left_container.setStyleSheet('''
         QFrame {
@@ -137,8 +278,8 @@ def create_pack_view_page():
             border-radius: 10px;
         }
     ''')
-    left_container.setMinimumWidth(int(1000 * 0.68))
-    left_container.setMaximumWidth(int(1000 * 0.72))
+    left_container.setMinimumWidth(int(1000 * 0.53))
+    left_container.setMaximumWidth(int(1000 * 0.57))
 
     # Sol container için layout
     left_layout = QVBoxLayout()
@@ -187,7 +328,7 @@ def create_pack_view_page():
 
     left_container.setLayout(left_layout)
 
-    # Sağ container (%30 yer kaplayacak)
+    # Sağ container (%45 yer kaplayacak)
     right_container = QFrame()
     right_container.setStyleSheet('''
         QFrame {
@@ -196,8 +337,8 @@ def create_pack_view_page():
             border-radius: 10px;
         }
     ''')
-    right_container.setMinimumWidth(int(1000 * 0.28))
-    right_container.setMaximumWidth(int(1000 * 0.32))
+    right_container.setMinimumWidth(int(1000 * 0.43))
+    right_container.setMaximumWidth(int(1000 * 0.47))
 
     # Place battery centered in right container
     global battery_widget
@@ -300,11 +441,68 @@ def create_pack_view_page():
     right_layout.addWidget(button_frame, 0, Qt.AlignmentFlag.AlignHCenter)
     right_layout.addSpacing(5)
     right_layout.addWidget(charging_icon, 0, Qt.AlignmentFlag.AlignHCenter)
+    
+    # Add 3 switches below charging icon
+    right_layout.addSpacing(15)
+    
+    # Main switch container frame
+    main_switch_container = QFrame()
+    main_switch_container.setStyleSheet('''
+        QFrame {
+            background-color: transparent;
+            border: none;
+            padding: 10px;
+        }
+    ''')
+    main_switch_container.setFixedWidth(400)
+    
+    main_switch_layout = QHBoxLayout()
+    main_switch_layout.setContentsMargins(10, 8, 10, 8)
+    main_switch_layout.setSpacing(25)
+    
+    # Switch names
+    switch_names = ["Pre-Charge", "Charge", "Discharge"]
+    
+    switches.clear()
+    # Create 3 individual switch containers
+    for i in range(3):
+        switch_container = QFrame()
+        switch_container.setStyleSheet('''
+            QFrame {
+                background-color: transparent;
+                border-radius: 10px;
+                border: 2px solid #0077A8;
+                padding: 8px;
+            }
+        ''')
+        switch_container.setFixedSize(100, 70)
+        
+        switch_inner_layout = QVBoxLayout()
+        switch_inner_layout.setContentsMargins(0, 0, 0, 0)
+        switch_inner_layout.setSpacing(10)
+        
+        # Switch name label
+        name_label = QLabel(switch_names[i])
+        name_label.setStyleSheet("color: #0077A8; font-size: 10px; font-weight: bold; background: transparent; border: none; padding: 5px 0px;")
+        name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        switch_inner_layout.addWidget(name_label)
+        
+        # Switch widget
+        switch = AnimatedSwitch(switch_names[i])
+        switches.append(switch)
+        switch_inner_layout.addWidget(switch, 0, Qt.AlignmentFlag.AlignCenter)
+        
+        switch_container.setLayout(switch_inner_layout)
+        main_switch_layout.addWidget(switch_container)
+    
+    main_switch_container.setLayout(main_switch_layout)
+    right_layout.addWidget(main_switch_container, 0, Qt.AlignmentFlag.AlignHCenter)
+    
     right_layout.addStretch(1)
     right_container.setLayout(right_layout)
 
-    main_layout.addWidget(left_container, 7)  # Sol container %70 ağırlık
-    main_layout.addWidget(right_container, 3)  # Sağ container %30 ağırlık
+    main_layout.addWidget(left_container, 55)  # Sol container %55 ağırlık
+    main_layout.addWidget(right_container, 45)  # Sağ container %45 ağırlık
 
     page.setLayout(main_layout)
     return page
