@@ -28,6 +28,11 @@ os.environ['QT_LOGGING_RULES'] = '*.debug=false;*.warning=false'  # hata olmayan
 voltage_data = {}
 temperature_data = {}
 pack_data = {}
+error_flag = False
+high_temp_flag = False
+high_temp_widgets = []
+high_temp_voltage_cells = []  # Voltage sayfasındaki karşılık gelen hücreler
+active_errors = []
 
 def parse_pack_status_704(data):
     global pack_data
@@ -49,6 +54,9 @@ def parse_pack_currents_705(data):
 
 def parse_errors_706(data):
     global pack_data
+    global error_flag
+    global high_temp_flag
+    global active_errors
     error_flag_1 = data[0]
     error_flag_2 = data[1]
     combined_error_flags = (error_flag_2 << 8) | error_flag_1
@@ -78,29 +86,79 @@ def parse_errors_706(data):
         if combined_error_flags & (1 << bit):
             active_errors.append(error_bits.get(bit, f"Unknown Bit {bit}"))
     
-    # OV Cell
-    ov_flags = struct.unpack('>H', data[2:4])[0]
-    active_ov_cells = [bit + 1 for bit in range(16) if ov_flags & (1 << bit)]
+    # Check for critical errors
+    critical_errors = ["Ic fail", "Open Wire", "Can Error"]
+    error_flag = any(error in active_errors for error in critical_errors)
     
-    # UV Cell
-    uv_flags = struct.unpack('>H', data[4:6])[0]
-    active_uv_cells = [bit + 1 for bit in range(16) if uv_flags & (1 << bit)]
-    
-    # OW Cell
-    ow_flags = struct.unpack('>H', data[6:8])[0]
-    active_ow_cells = [bit + 1 for bit in range(16) if ow_flags & (1 << bit)]
-    
-    parsed = {"Combined_Error_Flags": combined_error_flags, "Active_Errors": active_errors, "Active_OV_Cells": active_ov_cells, "Active_UV_Cells": active_uv_cells, "Active_OW_Cells": active_ow_cells}
-    pack_data.update(parsed)
-    return parsed
+    # Check for high temperature
+    high_temp_flag = "High temperature Cell" in active_errors
 
 def parse_warnings_707(data):
     global pack_data
-    delta_cell = struct.unpack('>H', data[0:2])[0] / 1000
-    ot_cell = struct.unpack('>H', data[2:4])[0]  # 16-bit
-    ow_temp_cell = struct.unpack('>H', data[4:6])[0] * 0.1
-    parsed = {"Delta_Cell": f"{delta_cell:.3f} V", "OT_Cell": ot_cell, "OW_Temp_Cell": f"{ow_temp_cell:.1f} °C"}
+    # Revised mapping per request:
+    # bytes 0-1: delta_cell (16-bit big-endian) -> /1000 => volts (no ' V' suffix)
+    # byte 2: OT bitmap (8-bit) -> bit0 (LSB) = temp widget1, ... bit7 = temp widget8
+    # byte 3: reserved/unused
+    # bytes 4-5: OW bitmap (16-bit big-endian) -> bit0 (LSB) = cell1, ... bit14 = cell15, bit15 unused
+    # bytes 6-7: reserved
+    # Pad to 8 bytes if shorter
+    if len(data) < 8:
+        b = data.ljust(8, b'\x00')
+    else:
+        b = data
+
+    delta_raw = struct.unpack('>H', b[0:2])[0]
+    delta_cell = delta_raw / 1000.0
+    delta_bin = f"{delta_raw:016b}"
+
+    ot_raw = b[2]
+    # OT as 8-bit bitmap: LSB = temp widget1, MSB = temp widget8
+    ot_active_widgets = [i + 1 for i in range(8) if (ot_raw >> i) & 1]
+    ot_hex = f"{ot_raw:02x}"
+    ot_bin = f"{ot_raw:08b}"
+
+    # OW bitmap is bytes 4-5 (big-endian)
+    ow_bitmap_raw = struct.unpack('>H', b[4:6])[0]
+    # interpret LSB -> cell1 up to cell15 (ignore bit15)
+    active_ow_cells = [i + 1 for i in range(15) if (ow_bitmap_raw >> i) & 1]
+
+    ow_hex = f"{ow_bitmap_raw:04x}"
+    ow_bin = f"{ow_bitmap_raw:016b}"
+
+    parsed = {
+        "Delta_Cell": delta_bin,
+        "OT_Active_Widgets": ot_active_widgets,
+        "OT_Hex": ot_hex,
+        "OT_Bin": ot_bin,
+        "OW_Active_Cells": active_ow_cells,
+        "OW_Hex": ow_hex,
+        "OW_Bin": ow_bin,
+    }
     pack_data.update(parsed)
+    
+    global high_temp_widgets, high_temp_voltage_cells
+    if high_temp_flag:
+        high_temp_widgets = ot_active_widgets
+        # Temperature hücrelerini voltage hücrelerine map et
+        high_temp_voltage_cells = []
+        for temp_widget in ot_active_widgets:
+            if 1 <= temp_widget <= 6:
+                # İlk 6 hücre: her biri 2'şer voltage hücresine denk geliyor
+                # temp_widget 1 -> voltage cells 1,2
+                # temp_widget 2 -> voltage cells 3,4
+                # temp_widget 3 -> voltage cells 5,6
+                # temp_widget 4 -> voltage cells 7,8
+                # temp_widget 5 -> voltage cells 9,10
+                # temp_widget 6 -> voltage cells 11,12
+                voltage_cell1 = (temp_widget - 1) * 2 + 1
+                voltage_cell2 = (temp_widget - 1) * 2 + 2
+                high_temp_voltage_cells.extend([voltage_cell1, voltage_cell2])
+            elif temp_widget == 7:
+                # 7. hücre -> voltage cells 13,14,15 (son 3 hücre)
+                high_temp_voltage_cells.extend([13, 14, 15])
+    else:
+        high_temp_voltage_cells = []
+    
     return parsed
 
 def parse_pack_voltages_708(data):
@@ -206,6 +264,12 @@ def can_listener():
                             print(f"Error meanings: {', '.join(active_errors)}")
                         print("---")
 
+                    if msg.arbitration_id == 0x707:
+                        print(f"Raw data for 0x707: {msg.data.hex()}")
+                        if parsed:
+                            print(f"Parsed data: {parsed}")
+                        print("---")
+
                     data = {  # Gelen CAN B dataalrını hex oalrak timestampt , can id  , ham (hext) datayı receiveddata.jsonl dosyası oluşturup içine yazıyorum. Dosya var ise alt satıra eklemeye deva mediyor.
                         "timestamp": datetime.fromtimestamp(time.time()).strftime('%d/%m/%Y %H:%M:%S'),
                         "id": hex(msg.arbitration_id),
@@ -219,9 +283,9 @@ def can_listener():
 # CAN thread'ini başlat
 if platform.system() == 'Linux':
     try:
-        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'down'], check=True)
-        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'up', 'type', 'can', 'bitrate', '500000'], check=True)
-        print("Executed: sudo ip link set can0 down and up")
+        subprocess.run(['sudo', 'ip', 'link', 'add', 'can0', 'type', 'can'], check=True)
+        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'up'], check=True)
+        print("Executed: sudo ip link add can0 type can and up")
     except subprocess.CalledProcessError as e:
         print(f"Failed to execute CAN interface commands: {e}")
 

@@ -21,7 +21,7 @@ def fake_can_sender():
                         bus.send(msg)
                         print(f"Sent: ID={hex(arbitration_id)}, Data={msg_data.hex()}")
 
-                    time.sleep(1)  # Her saniye bir mesaj gönder
+                    time.sleep(0.2)  # Her 0.2 saniyede bir mesaj gönder (saniyede 5 mesaj)
 
     except Exception as e:
         print(f"Fake CAN error: {e}")

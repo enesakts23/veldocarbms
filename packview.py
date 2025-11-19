@@ -85,17 +85,9 @@ class AnimatedSwitch(QWidget):
 class BatteryWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.level = 85  # example SOC
+        self.level = 0  # Veri yokken 0 göster
         self.setMinimumSize(120, 300)
         self.setMaximumWidth(160)
-        self.wave_phase = 0.0
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.animate_wave)
-        self.timer.start(40)
-
-    def animate_wave(self):
-        self.wave_phase += 0.18
-        self.update()
 
     def setLevel(self, soc):
         self.level = soc
@@ -125,54 +117,45 @@ class BatteryWidget(QWidget):
 
         soc = max(0, min(100, self.level))
 
-        if soc > 30:
-            color1 = QColor("#00b51a")
-            color2 = QColor("#00b51a")
-        elif soc > 10:
-            color1 = QColor("#ff9800")
-            color2 = QColor("#ffb300")
-        else:
-            color1 = QColor("#f44336")
-            color2 = QColor("#ff5252")
+        if soc > 0:
+            if soc > 30:
+                color1 = QColor("#00b51a")
+                color2 = QColor("#00b51a")
+            elif soc > 10:
+                color1 = QColor("#ff9800")
+                color2 = QColor("#ffb300")
+            else:
+                color1 = QColor("#f44336")
+                color2 = QColor("#ff5252")
 
-        fill_left = body_left + 6
-        fill_top = body_top + 6
-        fill_width = body_width - 12
-        fill_height = body_height - 12
+            fill_left = body_left + 6
+            fill_top = body_top + 6
+            fill_width = body_width - 12
+            fill_height = body_height - 12
 
-        wave_height = fill_height * soc / 100
-        wave_top = fill_top + fill_height - wave_height
+            fill_height_actual = fill_height * soc / 100
+            fill_top_actual = fill_top + fill_height - fill_height_actual
 
-        wave_points = []
-        for i in range(0, int(fill_width) + 1, 2):
-            x = fill_left + i
-            y = wave_top + 8 * math.sin((i / 22.0) + self.wave_phase)
-            wave_points.append((x, y))
+            # Düz doluluk çizimi (wave olmadan)
+            gradient = QLinearGradient(0, fill_top + fill_height, 0, fill_top_actual)
+            gradient.setColorAt(0, color1)
+            gradient.setColorAt(1, color2)
 
-        poly_points = []
-        poly_points.extend(wave_points)
-        poly_points.append((fill_left + fill_width, fill_top + fill_height))
-        poly_points.append((fill_left, fill_top + fill_height))
+            painter.setBrush(QBrush(gradient))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRect(fill_left, fill_top_actual, fill_width, fill_height_actual)
 
-        gradient = QLinearGradient(0, fill_top + fill_height, 0, wave_top)
-        gradient.setColorAt(0, color1)
-        gradient.setColorAt(1, color2)
-
-        painter.setBrush(QBrush(gradient))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawPolygon(QPolygonF([QPointF(x, y) for x, y in poly_points]))
-
-        shine_gradient = QLinearGradient(fill_left, 0, fill_left + fill_width * 0.4, 0)
-        shine_gradient.setColorAt(0, QColor(255, 255, 255, 40))
-        shine_gradient.setColorAt(1, QColor(255, 255, 255, 0))
-        painter.setBrush(QBrush(shine_gradient))
-        shine_poly = [
-            QPointF(fill_left, fill_top),
-            QPointF(fill_left + fill_width * 0.35, fill_top),
-            QPointF(fill_left + fill_width * 0.35, fill_top + fill_height),
-            QPointF(fill_left, fill_top + fill_height)
-        ]
-        painter.drawPolygon(QPolygonF(shine_poly))
+            shine_gradient = QLinearGradient(fill_left, 0, fill_left + fill_width * 0.4, 0)
+            shine_gradient.setColorAt(0, QColor(255, 255, 255, 40))
+            shine_gradient.setColorAt(1, QColor(255, 255, 255, 0))
+            painter.setBrush(QBrush(shine_gradient))
+            shine_rect = [
+                QPointF(fill_left, fill_top_actual),
+                QPointF(fill_left + fill_width * 0.35, fill_top_actual),
+                QPointF(fill_left + fill_width * 0.35, fill_top_actual + fill_height_actual),
+                QPointF(fill_left, fill_top_actual + fill_height_actual)
+            ]
+            painter.drawPolygon(QPolygonF(shine_rect))
 
         painter.setPen(QPen(QColor("#ffffff"), 2))
         font = QFont("Arial", 24, QFont.Weight.Bold)
@@ -183,10 +166,11 @@ class BatteryWidget(QWidget):
             Qt.AlignmentFlag.AlignCenter,
             f"{soc:.0f}%"
         )
-        painter.setPen(QPen(QColor(0, 0, 0, 100), 3))
-        painter.drawText(text_rect.adjusted(2, 2, 2, 2), Qt.AlignmentFlag.AlignCenter, f"{soc:.0f}%")
-        painter.setPen(QPen(QColor("#ffffff"), 2))
-        painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, f"{soc:.0f}%")
+        if soc > 0:
+            painter.setPen(QPen(QColor(0, 0, 0, 100), 3))
+            painter.drawText(text_rect.adjusted(2, 2, 2, 2), Qt.AlignmentFlag.AlignCenter, f"{soc:.0f}%")
+            painter.setPen(QPen(QColor("#ffffff"), 2))
+            painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, f"{soc:.0f}%")
 
 
 class ConfirmationDialog(QDialog):
@@ -291,13 +275,13 @@ def create_pack_view_page():
 
     # Bilgi satırları - ikon ile birlikte
     info_items = [
-        ("🔋", "SOC:", "85.00%"),
-        ("❤️", "SOH:", "100.00%"),
-        ("⚡", "Vpack:", "300.00 V"),
-        ("🔌", "State:", "IDLE"),
-        ("⚡", "Current:", "0.00 A"),
-        ("📉", "Min Cell:", "0.00 V"),
-        ("📈", "Max Cell:", "0.00 V")
+        ("🔋", "SOC:", ""),
+        ("❤️", "SOH:", ""),
+        ("⚡", "Vpack:", ""),
+        ("🔌", "State:", ""),
+        ("⚡", "Current:", ""),
+        ("📉", "Min Cell:", ""),
+        ("📈", "Max Cell:", "")
     ]
 
     for icon_text, label_text, value_text in info_items:
@@ -543,7 +527,9 @@ def update_pack_display():
             soc_value = int(soc_str.rstrip('%'))
             battery_widget.setLevel(soc_value)
         except ValueError:
-            pass
+            battery_widget.setLevel(0)
+    else:
+        battery_widget.setLevel(0)
     
     # Update button based on current value
     if "Current" in main_mod.pack_data:
