@@ -21,6 +21,8 @@ class TemperatureCell(QFrame):
         self.repaint_timer.start(80)  # 80ms'de bir güncelle
         self.cell_label = QLabel("", self)
         self.cell_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Allow multi-line / HTML rendering for stacked short+full error text
+        self.cell_label.setWordWrap(True)
         self.cell_label.setGeometry(0, 0, self.width(), self.height())
         self.cell_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         temperature_labels.append(self.cell_label)
@@ -226,11 +228,11 @@ def update_temperature_display():
     for err in critical_errors:
         if err in active_errors:
             if err == "Ic fail":
-                error_text = "IC F."
+                error_text = "IC Fail"
             elif err == "Open Wire":
-                error_text = "O.W."
+                error_text = "Open Wire"
             elif err == "Can Error":
-                error_text = "C.E."
+                error_text = "Can Error"
             break
     keys = ["T1", "T2", "T3", "T4", "T5", "T6", "TPCB"]
     for i, key in enumerate(keys):
@@ -244,6 +246,7 @@ def update_temperature_display():
             cell_widget.set_high_temp_mode(is_high_temp)
         
         if error_mode:
+            temperature_labels[i].setTextFormat(Qt.TextFormat.PlainText)
             temperature_labels[i].setText(error_text)
         elif is_high_temp:
             temperature_labels[i].setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")

@@ -20,6 +20,8 @@ class VoltageCell(QFrame):
         self.repaint_timer.start(80)  # 80ms'de bir güncelle
         self.voltage_label = QLabel("", self)
         self.voltage_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Allow multi-line / HTML rendering for stacked short+full error text
+        self.voltage_label.setWordWrap(True)
         self.voltage_label.setGeometry(0, 0, self.width(), self.height())
         self.voltage_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: 900; background: transparent;")
         voltage_labels.append(self.voltage_label)
@@ -206,15 +208,16 @@ def update_voltage_display():
     high_temp_voltage_cells = getattr(main_mod, 'high_temp_voltage_cells', [])
     active_errors = getattr(main_mod, 'active_errors', [])
     critical_errors = ["Ic fail", "Open Wire", "Can Error"]
+    # Prepare full name for display when an active critical error exists
     error_text = ""
     for err in critical_errors:
         if err in active_errors:
             if err == "Ic fail":
-                error_text = "IC F."
+                error_text = "IC Fail"
             elif err == "Open Wire":
-                error_text = "O.W."
+                error_text = "Open Wire"
             elif err == "Can Error":
-                error_text = "C.E."
+                error_text = "Can Error"
             break
     for i in range(15):
         cell_widget = voltage_labels[i].parent()
@@ -227,6 +230,8 @@ def update_voltage_display():
             cell_widget.set_high_temp_mode(is_high_temp)
         
         if error_mode:
+            # Use plain text for error display
+            voltage_labels[i].setTextFormat(Qt.TextFormat.PlainText)
             voltage_labels[i].setText(error_text)
         else:
             key = f"V{i+1}"
@@ -243,6 +248,8 @@ def update_voltage_display():
                         formatted_voltage = voltage_str
                 except ValueError:
                     formatted_voltage = voltage_str
+                # Use plain text for normal voltage values
+                voltage_labels[i].setTextFormat(Qt.TextFormat.PlainText)
                 voltage_labels[i].setText(formatted_voltage)
             else:
                 voltage_labels[i].setText("")
