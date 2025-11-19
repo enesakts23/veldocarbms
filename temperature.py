@@ -237,9 +237,12 @@ def update_temperature_display():
         cell_widget = temperature_labels[i].parent()
         if hasattr(cell_widget, 'set_error_mode'):
             cell_widget.set_error_mode(error_mode)
+        
+        is_high_temp = False
         if hasattr(cell_widget, 'set_high_temp_mode'):
             is_high_temp = (i+1) in high_temp_widgets if high_temp_mode else False
             cell_widget.set_high_temp_mode(is_high_temp)
+        
         if error_mode:
             temperature_labels[i].setText(error_text)
         elif is_high_temp:

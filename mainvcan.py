@@ -31,7 +31,7 @@ pack_data = {}
 error_flag = False
 high_temp_flag = False
 high_temp_widgets = []
-active_errors = []
+high_temp_voltage_cells = []  # Voltage sayfasındaki karşılık gelen hücreler
 active_errors = []
 
 def parse_pack_status_704(data):
@@ -136,9 +136,28 @@ def parse_warnings_707(data):
     }
     pack_data.update(parsed)
     
-    global high_temp_widgets
+    global high_temp_widgets, high_temp_voltage_cells
     if high_temp_flag:
         high_temp_widgets = ot_active_widgets
+        # Temperature hücrelerini voltage hücrelerine map et
+        high_temp_voltage_cells = []
+        for temp_widget in ot_active_widgets:
+            if 1 <= temp_widget <= 6:
+                # İlk 6 hücre: her biri 2'şer voltage hücresine denk geliyor
+                # temp_widget 1 -> voltage cells 1,2
+                # temp_widget 2 -> voltage cells 3,4
+                # temp_widget 3 -> voltage cells 5,6
+                # temp_widget 4 -> voltage cells 7,8
+                # temp_widget 5 -> voltage cells 9,10
+                # temp_widget 6 -> voltage cells 11,12
+                voltage_cell1 = (temp_widget - 1) * 2 + 1
+                voltage_cell2 = (temp_widget - 1) * 2 + 2
+                high_temp_voltage_cells.extend([voltage_cell1, voltage_cell2])
+            elif temp_widget == 7:
+                # 7. hücre -> voltage cells 13,14,15 (son 3 hücre)
+                high_temp_voltage_cells.extend([13, 14, 15])
+    else:
+        high_temp_voltage_cells = []
     
     return parsed
 
