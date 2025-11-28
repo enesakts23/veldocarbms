@@ -143,13 +143,14 @@ def parse_warnings_707(data):
         high_temp_voltage_cells = []
         for temp_widget in ot_active_widgets:
             if 1 <= temp_widget <= 6:
-                # İlk 6 hücre: her biri 2'şer voltage hücresine denk geliyor
+                # İlk 6 hücre: her biri 2'şer voltage hücresine denk geliyor şekilde ayarladım
                 # temp_widget 1 -> voltage cells 1,2
                 # temp_widget 2 -> voltage cells 3,4
                 # temp_widget 3 -> voltage cells 5,6
                 # temp_widget 4 -> voltage cells 7,8
                 # temp_widget 5 -> voltage cells 9,10
                 # temp_widget 6 -> voltage cells 11,12
+                # temp_widget 7 PCB KART SICAKLIĞI -> voltage cells 13,14 ve 15 oluyoeç.
                 voltage_cell1 = (temp_widget - 1) * 2 + 1
                 voltage_cell2 = (temp_widget - 1) * 2 + 2
                 high_temp_voltage_cells.extend([voltage_cell1, voltage_cell2])
