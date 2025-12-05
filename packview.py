@@ -55,11 +55,61 @@ class AnimatedSwitch(QWidget):
         self.toggled.emit(self._checked)
     
     def mousePressEvent(self, event):
+        # If trying to activate this switch, first deactivate others
+        if not self._checked:  # If we're turning ON
+            # Turn off other switches before activating this one
+            for switch in switches:
+                if switch != self and switch.isChecked():
+                    # Close the other switch first
+                    switch.setChecked(False)
+                    switch.send_can_command()
+        
         action = "activated" if not self._checked else "deactivated"
         dialog = ConfirmationDialog(f"{self.name} will be {action}, are you sure?", parent=page)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.setChecked(not self._checked)
+            # Send CAN command when switch state changes
+            self.send_can_command()
         super().mousePressEvent(event)
+    
+    def send_can_command(self):
+        """Send CAN command based on switch state and name"""
+        import __main__ as main_mod
+        
+        # Determine which switch this is and build command
+        chg = 0
+        dsg = 0
+        pre = 0
+        aux = 0
+        
+        if self.name == "Charge":
+            chg = 1 if self._checked else 0
+        elif self.name == "Discharge":
+            dsg = 1 if self._checked else 0
+        elif self.name == "Pre-Charge":
+            pre = 1 if self._checked else 0
+        elif self.name == "AUX Contactor":
+            aux = 1 if self._checked else 0
+        
+        # Build the control byte
+        control_byte = 0
+        if chg: control_byte |= (1 << 0)  # Bit 0: CHG contactor
+        if dsg: control_byte |= (1 << 1)  # Bit 1: DSG contactor
+        if pre: control_byte |= (1 << 2)  # Bit 2: PRE contactor
+        if aux: control_byte |= (1 << 3)  # Bit 3: AUX contactor
+        
+        # 8 bytes: first byte is control, rest are 0x00
+        message_bytes = [control_byte] + [0] * 7
+        message_hex = ' '.join(f"{b:02X}" for b in message_bytes)
+        
+        # Print the command
+        action = "ON" if self._checked else "OFF"
+        print(f"Switch: {self.name} {action}")
+        print(f"CAN ID 0x601: {message_hex}")
+        
+        # Try to send via CAN if available
+        if hasattr(main_mod, 'send_contactor_command'):
+            main_mod.send_contactor_command(chg=chg, dsg=dsg, pre=pre, aux=aux)
     
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -441,15 +491,15 @@ def create_pack_view_page():
     main_switch_container.setFixedWidth(400)
     
     main_switch_layout = QHBoxLayout()
-    main_switch_layout.setContentsMargins(10, 8, 10, 8)
-    main_switch_layout.setSpacing(25)
+    main_switch_layout.setContentsMargins(8, 6, 8, 6)
+    main_switch_layout.setSpacing(12)
     
     # Switch names
-    switch_names = ["Pre-Charge", "Charge", "Discharge"]
+    switch_names = ["Pre-Charge", "Charge", "Discharge", "AUX Contactor"]
     
     switches.clear()
-    # Create 3 individual switch containers
-    for i in range(3):
+    # Create 4 individual switch containers
+    for i in range(4):
         switch_container = QFrame()
         switch_container.setStyleSheet('''
             QFrame {
@@ -459,7 +509,7 @@ def create_pack_view_page():
                 padding: 8px;
             }
         ''')
-        switch_container.setFixedSize(100, 70)
+        switch_container.setFixedSize(85, 70)
         
         switch_inner_layout = QVBoxLayout()
         switch_inner_layout.setContentsMargins(0, 0, 0, 0)

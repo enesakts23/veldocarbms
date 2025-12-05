@@ -21,6 +21,7 @@ class CanReceiver(QObject):
     data_received = pyqtSignal()
 
 can_receiver = CanReceiver()
+can_bus = None  # Global CAN bus reference
 
 os.environ['QT_LOGGING_RULES'] = '*.debug=false;*.warning=false'  # hata olmayan ama warning olan qt mesajlarını susuturmak için ekeldim. backend dışı bi hata olursa bulamassam bunu kladırmam lazım ki susuturlan bir uı warnnig i varsa görebileyim.
 
@@ -143,14 +144,13 @@ def parse_warnings_707(data):
         high_temp_voltage_cells = []
         for temp_widget in ot_active_widgets:
             if 1 <= temp_widget <= 6:
-                # İlk 6 hücre: her biri 2'şer voltage hücresine denk geliyor şekilde ayarladım
+                # İlk 6 hücre: her biri 2'şer voltage hücresine denk geliyor
                 # temp_widget 1 -> voltage cells 1,2
                 # temp_widget 2 -> voltage cells 3,4
                 # temp_widget 3 -> voltage cells 5,6
                 # temp_widget 4 -> voltage cells 7,8
                 # temp_widget 5 -> voltage cells 9,10
                 # temp_widget 6 -> voltage cells 11,12
-                # temp_widget 7 PCB KART SICAKLIĞI -> voltage cells 13,14 ve 15 oluyoeç.
                 voltage_cell1 = (temp_widget - 1) * 2 + 1
                 voltage_cell2 = (temp_widget - 1) * 2 + 2
                 high_temp_voltage_cells.extend([voltage_cell1, voltage_cell2])
@@ -230,20 +230,48 @@ parsers = {     # bu ksımda can mesaj id lerine göre hangi parser fonksiyonunu
     0x701: ("TEMPERATURES_701", parse_temperatures_701),
 }
 
+def send_contactor_command(chg=0, dsg=0, pre=0, aux=0, reset=0):
+    """Send contactor control command via CAN ID 0x601"""
+    global can_bus
+    if can_bus is None:
+        print("CAN bus not initialized")
+        return
+    
+    # Build the first byte with bit positions
+    control_byte = 0
+    if chg: control_byte |= (1 << 0)  # Bit 0: CHG contactor
+    if dsg: control_byte |= (1 << 1)  # Bit 1: DSG contactor
+    if pre: control_byte |= (1 << 2)  # Bit 2: PRE contactor
+    if aux: control_byte |= (1 << 3)  # Bit 3: AUX contactor
+    if reset: control_byte |= (1 << 4)  # Bit 4: Reset BCU
+    
+    # 8 bytes: first byte is control, rest are 0x00
+    message_bytes = [control_byte] + [0] * 7
+    message_hex = ' '.join(f"{b:02X}" for b in message_bytes)
+    print(f"CAN ID 0x601: {message_hex}")
+    
+    try:
+        msg = can.Message(arbitration_id=0x601, data=message_bytes, is_extended_id=False)
+        can_bus.send(msg)
+        print(f"Sent contactor command: CHG={chg} DSG={dsg} PRE={pre} AUX={aux} RESET={reset}")
+    except Exception as e:
+        print(f"Failed to send CAN message: {e}")
+
 def can_listener():
+    global can_bus
     try:
         if platform.system() == 'Linux':
-            bus = can.interface.Bus(channel='can0', interface='socketcan', bitrate=500000)
+            can_bus = can.interface.Bus(channel='can0', interface='socketcan', bitrate=500000)
             print("CAN bus connected on can0 with bitrate 500000 (Linux socketcan)")
         elif platform.system() == 'Windows':
-            bus = can.interface.Bus(channel=(0, 1), interface='canalystii', bitrate=500000)
+            can_bus = can.interface.Bus(channel=(0, 1), interface='canalystii', bitrate=500000)
             print("CAN bus connected on CANalyst-II channels 0 and 1 with bitrate 500000 (Windows)")
         else:
             print("Unsupported platform for CAN bus")
             return
         with open('receiveddata.jsonl', 'a') as f:
             while True:
-                msg = bus.recv()
+                msg = can_bus.recv()
                 if msg:
                     can_receiver.data_received.emit()
                     parsed = None
