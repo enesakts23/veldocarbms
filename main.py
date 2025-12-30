@@ -331,9 +331,10 @@ def can_listener():
 # CAN thread'ini başlat
 if platform.system() == 'Linux':
     try:
-        subprocess.run(['sudo', 'ip', 'link', 'add', 'can0', 'type', 'can'], check=True)
+        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'down'], check=True)
+        subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'up', 'type', 'can', 'bitrate', '500000'], check=True)
         subprocess.run(['sudo', 'ip', 'link', 'set', 'can0', 'up'], check=True)
-        print("Executed: sudo ip link add can0 type can and up")
+        print("Executed: sudo ip link set can0 down, up type can bitrate 500000, and up")
     except subprocess.CalledProcessError as e:
         print(f"Failed to execute CAN interface commands: {e}")
 
