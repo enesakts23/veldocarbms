@@ -6,6 +6,7 @@ import voltage
 import temperature
 import packview
 import configuration
+import systeminfo
 import can
 import threading
 import json
@@ -378,6 +379,7 @@ def update_button_styles():
     voltage_button.setStyleSheet(selected if current_page == "Voltage" else normal)
     temperature_button.setStyleSheet(selected if current_page == "Temperature" else normal)
     pack_view_button.setStyleSheet(selected if current_page == "Pack View" else normal)
+    system_info_button.setStyleSheet(selected if current_page == "System Info" else normal)
     config_button.setStyleSheet("background-color: transparent; border: none;")
 
 window = QWidget()
@@ -424,13 +426,19 @@ pack_view_button = QPushButton("Pack View")
 pack_view_button.setFixedSize(140, 40)
 pack_view_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Pack View'), stacked_widget.setCurrentIndex(2), update_button_styles()])
 header_layout.addWidget(pack_view_button)
+header_layout.addSpacing(15)
+
+system_info_button = QPushButton("System Info")
+system_info_button.setFixedSize(140, 40)
+system_info_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'System Info'), stacked_widget.setCurrentIndex(3), update_button_styles()])
+header_layout.addWidget(system_info_button)
 
 config_button = QPushButton()
 config_button.setIcon(QIcon("configuration.png"))
 config_button.setIconSize(QSize(40, 40))
 config_button.setFixedSize(50, 50)
 config_button.setFlat(True)
-config_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Configuration'), stacked_widget.setCurrentIndex(3), update_button_styles()])
+config_button.clicked.connect(lambda: [setattr(sys.modules[__name__], 'current_page', 'Configuration'), stacked_widget.setCurrentIndex(4), update_button_styles()])
 header_layout.addWidget(config_button)
 
 power_button = QPushButton()
@@ -454,6 +462,8 @@ temperature_page = temperature.create_temperature_page()
 stacked_widget.addWidget(temperature_page)
 pack_view_page = packview.create_pack_view_page()
 stacked_widget.addWidget(pack_view_page)
+system_info_page = systeminfo.create_system_info_page()
+stacked_widget.addWidget(system_info_page)
 config_page = configuration.create_configuration_page()
 stacked_widget.addWidget(config_page)
 main_area_layout.addWidget(stacked_widget)
@@ -471,7 +481,8 @@ timer = QTimer()
 timer.timeout.connect(lambda: (
     voltage.update_voltage_display(), 
     temperature.update_temperature_display(), 
-    packview.update_pack_display()
+    packview.update_pack_display(),
+    systeminfo.update_system_info_display()
 ))
 timer.start(1000) 
 sys.exit(app.exec())
