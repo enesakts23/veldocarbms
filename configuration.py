@@ -110,6 +110,8 @@ def create_configuration_page():
     balance_buttons[1].setChecked(True)
     
     def update_status_message():
+        import __main__ as main
+        
         status_byte = 0
         if power_buttons[0].isChecked():  # Low Power Mode
             status_byte |= (1 << 0)
@@ -122,9 +124,9 @@ def create_configuration_page():
         if request_buttons[1].isChecked():  # Push Mode
             status_byte |= (1 << 7)
         
-        message_bytes = [status_byte] + [0] * 7
-        message_hex = ' '.join(f"{b:02X}" for b in message_bytes)
-        print(f"CAN ID 0x600: {message_hex}")
+        # Send the configuration command via CAN
+        if hasattr(main, 'send_configuration_command'):
+            main.send_configuration_command(status_byte)
     
     def on_power_mode_changed():
         mode = "Low Power Mode" if power_buttons[0].isChecked() else "Normal Power Mode"
@@ -210,11 +212,12 @@ def create_configuration_page():
     request_button_group.buttonClicked.connect(on_request_mode_changed)
     
     def on_reset_changed():
-        # Send reset message
-        message_bytes = [4] + [0] * 7  # 00000100 for Reset BMU
-        message_hex = ' '.join(f"{b:02X}" for b in message_bytes)
+        import __main__ as main
+        
+        # Send reset message via CAN
         print("Button pressed: Reset BMU")
-        print(f"CAN ID 0x600: {message_hex}")
+        if hasattr(main, 'send_configuration_command'):
+            main.send_configuration_command(4)  # 00000100 for Reset BMU
         
         # Reset all other buttons to default
         power_buttons[1].setChecked(True)  # Normal Power Mode

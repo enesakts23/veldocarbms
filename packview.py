@@ -74,7 +74,7 @@ class AnimatedSwitch(QWidget):
     
     def send_can_command(self):
         """Send CAN command based on switch state and name"""
-        import __main__ as main_mod
+        import __main__ as main
         
         # Determine which switch this is and build command
         chg = 0
@@ -91,25 +91,13 @@ class AnimatedSwitch(QWidget):
         elif self.name == "AUX Contactor":
             aux = 1 if self._checked else 0
         
-        # Build the control byte
-        control_byte = 0
-        if chg: control_byte |= (1 << 0)  # Bit 0: CHG contactor
-        if dsg: control_byte |= (1 << 1)  # Bit 1: DSG contactor
-        if pre: control_byte |= (1 << 2)  # Bit 2: PRE contactor
-        if aux: control_byte |= (1 << 3)  # Bit 3: AUX contactor
-        
-        # 8 bytes: first byte is control, rest are 0x00
-        message_bytes = [control_byte] + [0] * 7
-        message_hex = ' '.join(f"{b:02X}" for b in message_bytes)
-        
-        # Print the command
+        # Print the command info
         action = "ON" if self._checked else "OFF"
         print(f"Switch: {self.name} {action}")
-        print(f"CAN ID 0x601: {message_hex}")
         
-        # Try to send via CAN if available
-        if hasattr(main_mod, 'send_contactor_command'):
-            main_mod.send_contactor_command(chg=chg, dsg=dsg, pre=pre, aux=aux)
+        # Send via CAN using main.py function
+        if hasattr(main, 'send_contactor_command'):
+            main.send_contactor_command(chg=chg, dsg=dsg, pre=pre, aux=aux)
     
     def paintEvent(self, event):
         painter = QPainter(self)

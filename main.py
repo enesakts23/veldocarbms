@@ -257,6 +257,25 @@ def send_contactor_command(chg=0, dsg=0, pre=0, aux=0, reset=0):
     except Exception as e:
         print(f"Failed to send CAN message: {e}")
 
+def send_configuration_command(status_byte):
+    """Send configuration command via CAN ID 0x600"""
+    global can_bus
+    if can_bus is None:
+        print("CAN bus not initialized")
+        return
+    
+    # 8 bytes: first byte is status_byte, rest are 0x00
+    message_bytes = [status_byte] + [0] * 7
+    message_hex = ' '.join(f"{b:02X}" for b in message_bytes)
+    print(f"CAN ID 0x600: {message_hex}")
+    
+    try:
+        msg = can.Message(arbitration_id=0x600, data=message_bytes, is_extended_id=False)
+        can_bus.send(msg)
+        print(f"Configuration command sent successfully")
+    except Exception as e:
+        print(f"Failed to send CAN message: {e}")
+
 def can_listener():
     global can_bus
     try:
